@@ -3,12 +3,16 @@
 #
 # Some variables which should be replaced by settings in a .conf file or commandline options
 #
+## JWAT_DIR=$HOME/projects/jwat-tools/target/jwat-tools-0.6.3-SNAPSHOT
 JWAT_DIR=$HOME/jwat
-OUTPUT_DIR=.
+OUTPUT_ROOT_DIR=.
 DELETE=0
 DEBUG=true
 LOG=./compression.log
 JWAT_COMPRESSION=-9
+DEPTH=4
+CHECKSUM_FILE=checksum_CS.md5
+
 
 func_exit()
 {
@@ -26,8 +30,19 @@ if ! [ -f $1 ]; then
     func_exit "$1 doesn't exist." 2
 fi
 
-# Create a cdx file for the input file
+# Find the output directory and create it if necessary
+JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%0${DEPTH}d")
+$DEBUG && echo Padded Job-Number $JOBNR
+OUTPUT_DIR=$OUTPUT_ROOT_DIR
+for i in $(seq 1 ${#JOBNR})
+do
+    OUTPUT_DIR=$OUTPUT_DIR/${JOBNR:i-1:1}
+done
+$DEBUB && echo Output dir is $OUTPUT_DIR
+mkdir -p $OUTPUT_DIR
 
+
+# Create a cdx file for the input file
 OCDX=$OUTPUT_DIR/$(basename "$1").cdx
 $DEBUG && echo Creating cdx $OCDX
 $JWAT_DIR/jwattools.sh cdx -o $OCDX $INPUT_FILE
@@ -51,9 +66,8 @@ if [ $? -eq 0 ];  then
 else
      func_exit "Could not create compressed file $OUTPUT_FILE from $INPUT_FILE." 4
 fi
-# Calculate the sha1 for the output file and store
-SHA_FILE=$OUTPUT_DIR/$(basename "$1").sha1
-sha1sum $OUTPUT_FILE > $SHA_FILE
+# Calculate the md5 for the output file and store
+echo $(basename $OUTPUT_FILE)"##"$(openssl dgst -md5 $OUTPUT_FILE | cut -d'=' -f 2|cut -d' ' -f 2)   >>$CHECKSUM_FILE
 
 # Create a cdx file for the output file
 NCDX=${OUTPUT_FILE}.cdx
