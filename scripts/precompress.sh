@@ -53,7 +53,7 @@ OUTPUT_FILE=$OUTPUT_DIR/$(basename "$1").gz
 $DEBUG && echo Compressing to $OUTPUT_FILE.
 
 # Create the compressed file
-$JWAT_DIR/jwattools.sh compress $JWAT_COMPRESSION $INPUT_FILE
+$JWAT_DIR/jwattools.sh --verify compress $JWAT_COMPRESSION $INPUT_FILE
 mv ${INPUT_FILE}.gz $OUTPUT_FILE
 if [ $? -eq 0 ];  then
      $DEBUG && echo Created compressed file $OUTPUT_FILE from $INPUT_FILE
