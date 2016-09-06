@@ -63,7 +63,7 @@ fi
 
 # Check that the file can be reinflated
 TEMP_FILE=$(mktemp)
-gunzip $OUTPUT_FILE --to-stdout > $TEMP_FILE
+gunzip -c $OUTPUT_FILE --to-stdout > $TEMP_FILE
 NSHA1=$(sha1sum $TEMP_FILE |cut -d ' ' -f 1)
 if [ "$NSHA1" != "$OSHA1" ]; then
    func_exit "SHA1 mismatch on decompression between $INPUT_FILE and $TEMP_FILE."
