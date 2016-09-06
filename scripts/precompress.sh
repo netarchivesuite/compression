@@ -4,8 +4,9 @@
 # Some variables which should be replaced by settings in a .conf file or commandline options
 #
 ## JWAT_DIR=$HOME/projects/jwat-tools/target/jwat-tools-0.6.3-SNAPSHOT
-JWAT_DIR=$HOME/jwat
 OUTPUT_ROOT_DIR=.
+JWAT_DIR=/netarkiv-devel/jwat
+OUTPUT_DIR=.
 DELETE=0
 DEBUG=true
 LOG=./compression.log
