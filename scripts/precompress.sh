@@ -1,18 +1,9 @@
 #!/bin/bash
 
-#
-# Some variables which should be replaced by settings in a .conf file or commandline options
-#
-## JWAT_DIR=$HOME/projects/jwat-tools/target/jwat-tools-0.6.3-SNAPSHOT
-OUTPUT_ROOT_DIR=.
-JWAT_DIR=/netarkiv-devel/jwat
-OUTPUT_DIR=.
-DELETE=0
-DEBUG=true
-LOG=./compression.log
-JWAT_COMPRESSION=-9
-DEPTH=4
-CHECKSUM_FILE=checksum_CS.md5
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+. $DIR/precompress_conf.sh
+
+
 
 
 func_exit()
@@ -32,7 +23,7 @@ if ! [ -f $1 ]; then
 fi
 
 # Find the output directory and create it if necessary
-JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%0${DEPTH}d")
+JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%.${DEPTH}s")
 $DEBUG && echo Padded Job-Number $JOBNR
 OUTPUT_DIR=$OUTPUT_ROOT_DIR
 for i in $(seq 1 ${#JOBNR})
