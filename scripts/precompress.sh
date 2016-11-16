@@ -28,7 +28,7 @@ $DEBUG && echo Padded Job-Number $JOBNR
 OUTPUT_DIR=$OUTPUT_ROOT_DIR
 # if ifile already exists then skip this file - we've already processed it
 IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
-if ! [ -f $IFILE ]; then
+if [ -f $IFILE ]; then
    $DEBUG && echo $IFILE already exists. Skipping.
    exit 0
 fi
