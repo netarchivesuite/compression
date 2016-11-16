@@ -26,6 +26,14 @@ fi
 JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%.${DEPTH}s")
 $DEBUG && echo Padded Job-Number $JOBNR
 OUTPUT_DIR=$OUTPUT_ROOT_DIR
+# if ifile already exists then skip this file - we've already processed it
+IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
+if ! [ -f $IFILE ]; then
+   $DEBUG && echo $IFILE already exists. Skipping.
+   exit 0
+fi
+
+
 for i in $(seq 1 ${#JOBNR})
 do
     OUTPUT_DIR=$OUTPUT_DIR/${JOBNR:i-1:1}
@@ -93,9 +101,9 @@ if [ $LOCDX -ne $LNCDX ]; then
 fi
 
 # Generate the i-file name
-IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
+## IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
 $DEBUG && echo "Creating ifile $IFILE."
-rm -f $IFILE
+## rm -f $IFILE
 
 # Loop over the two cdx files to create the lookup cdx
 while read ocdx_line <&3 && read ncdx_line <&4; do
