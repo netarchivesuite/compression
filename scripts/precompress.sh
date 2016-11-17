@@ -11,7 +11,7 @@ func_exit()
   $DEBUG && echo $1
   (
     flock -x -w 10 200 || exit 1
-    echo $1 >>$LOG
+    echo "$(date -Iseconds) $1" >>$LOG
   ) 200>$LOCK
   exit $2
 }
@@ -29,7 +29,6 @@ fi
 JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%.${DEPTH}s")
 $DEBUG && echo Padded Job-Number $JOBNR
 OUTPUT_DIR=$OUTPUT_ROOT_DIR
-
 
 
 for i in $(seq 1 ${#JOBNR})
@@ -124,4 +123,5 @@ if [ $? -ne 0 ]; then
 else
    $DEBUG && echo "Cleaning up."
    rm $NCDX $OCDX
+   func_exit "Wrote $IFILE" 0
 fi
