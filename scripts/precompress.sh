@@ -29,12 +29,7 @@ fi
 JOBNR=$(basename $INPUT_FILE|cut -d '-' -f 1|xargs printf "%.${DEPTH}s")
 $DEBUG && echo Padded Job-Number $JOBNR
 OUTPUT_DIR=$OUTPUT_ROOT_DIR
-# if ifile already exists then skip this file - we've already processed it
-IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
-if [ -f $IFILE ]; then
-   $DEBUG && echo $IFILE already exists. Skipping.
-   exit 0
-fi
+
 
 
 for i in $(seq 1 ${#JOBNR})
@@ -43,8 +38,12 @@ do
 done
 $DEBUG && echo Output dir is $OUTPUT_DIR
 mkdir -p $OUTPUT_DIR
-
-
+# if ifile already exists then skip this file - we've already processed it
+IFILE=$OUTPUT_DIR/$(basename "$INPUT_FILE").ifile.cdx
+if [ -f $IFILE ]; then
+   $DEBUG && echo $IFILE already exists. Skipping.
+   exit 0
+fi
 
 # Calculate the sha1 for the input file
 OSHA1=$(sha1sum $1 |cut -d ' ' -f 1)
