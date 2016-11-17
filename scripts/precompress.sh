@@ -8,9 +8,12 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 func_exit()
 {
-$DEBUG && echo $1
-echo $1 >>$LOG
-exit $2
+  $DEBUG && echo $1
+  (
+    flock -x -w 10 200 || exit 1
+    echo $1 >>$LOG
+  ) 200>$LOCK
+  exit $2
 }
 
 INPUT_FILE=$1
@@ -75,7 +78,11 @@ else
 fi
 
 # Calculate the md5 for the output file and store
-echo $(basename $OUTPUT_FILE)"##"$(md5sum $OUTPUT_FILE | cut -d' ' -f 1)   >>$CHECKSUM_FILE
+CHECKSUM=$(basename $OUTPUT_FILE)"##"$(md5sum $OUTPUT_FILE | cut -d' ' -f 1)
+(
+   flock -x -w 10 201 || exit 1
+   echo $(basename $OUTPUT_FILE)"##"$(md5sum $OUTPUT_FILE | cut -d' ' -f 1)   >>$CHECKSUM_FILE
+) 201>$CSLOCK
 
 # Create a cdx file for the input file
 OCDX=$OUTPUT_DIR/$(basename "$1").cdx
