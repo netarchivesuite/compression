@@ -1,7 +1,11 @@
 #!/bin/bash
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ $USER = "csr" ]; then
+. $DIR/precompress_conf_local.sh
+else
 . $DIR/precompress_conf.sh
+fi
 
 
 

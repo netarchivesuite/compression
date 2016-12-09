@@ -31,7 +31,11 @@ func_exit()
 }
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-. $DIR/compress_conf.sh
+if [ $USER = "csr" ]; then
+. $DIR/compress_conf_local.sh
+else
+. $DIR/precompress_conf.sh
+fi
 
 
 
@@ -76,9 +80,9 @@ fi
 MD5_ACTUAL=$( md5sum $OUTPUT_FILE |cut -d' ' -f 1)
 
 if [ "$MD5_ACTUAL" == "$MD5_EXPECTED" ]; then
+  ## rm $INPUT_FILE
 (
   flock -x -w 10 202 || exit 1
-  ## rm $INPUT_FILE
   echo "Created $OUTPUT_FILE . Deleted $INPUT_FILE ." >>$LOG
 ) 202>$LOCK
 else
