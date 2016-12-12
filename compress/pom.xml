@@ -29,6 +29,11 @@
             <artifactId>jwat-tools</artifactId>
             <version>0.6.3-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.netpreserve.openwayback</groupId>
+            <artifactId>openwayback-core</artifactId>
+            <version>2.3.0</version>
+        </dependency>
     </dependencies>
 
 

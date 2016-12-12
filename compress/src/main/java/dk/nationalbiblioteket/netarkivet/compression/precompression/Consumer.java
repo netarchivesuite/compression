@@ -1,10 +1,20 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.archive.util.iterator.CloseableIterator;
+import org.archive.wayback.UrlCanonicalizer;
+import org.archive.wayback.core.CaptureSearchResult;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
+import org.archive.wayback.resourcestore.indexer.ArcIndexer;
+import org.archive.wayback.resourcestore.indexer.IndexWorker;
+import org.archive.wayback.resourcestore.indexer.WarcIndexer;
+import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
 import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
@@ -30,9 +40,33 @@ public class Consumer  extends CompressFile implements Runnable {
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
 
+    public static final String ARC_EXTENSION = ".arc";
+    public static final String ARC_GZ_EXTENSION = ".arc.gz";
+    public static final String WARC_EXTENSION = ".warc";
+    public static final String WARC_GZ_EXTENSION = ".warc.gz";
+    private ArcIndexer arcIndexer = new ArcIndexer();
+    private WarcIndexer warcIndexer = new WarcIndexer();
+    private UrlCanonicalizer canonicalizer = new IdentityUrlCanonicalizer();
+
+    private CloseableIterator<CaptureSearchResult> indexFile(String pathOrUrl) throws IOException {
+        CloseableIterator itr = null;
+        if(pathOrUrl.endsWith(ARC_EXTENSION)) {
+            itr = this.arcIndexer.iterator(pathOrUrl);
+        } else if(pathOrUrl.endsWith(ARC_GZ_EXTENSION)) {
+            itr = this.arcIndexer.iterator(pathOrUrl);
+        } else if(pathOrUrl.endsWith(WARC_EXTENSION)) {
+            itr = this.warcIndexer.iterator(pathOrUrl);
+        } else if(pathOrUrl.endsWith(WARC_GZ_EXTENSION)) {
+            itr = this.warcIndexer.iterator(pathOrUrl);
+        }
+        return itr;
+    }
+
     public Consumer (BlockingQueue<String> sharedQueue, int threadNo) {
         this.sharedQueue = sharedQueue;
         this.threadNo = threadNo;
+        arcIndexer.setCanonicalizer(canonicalizer);
+        warcIndexer.setCanonicalizer(canonicalizer);
     }
 
     public void precompress(String filename) throws FatalException {
@@ -65,36 +99,34 @@ public class Consumer  extends CompressFile implements Runnable {
             throw new FatalException("Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1);
         }
-        File ocdx = new File(subdir, inputFile.getName() + ".cdx");
-        CDXOptions cdxOptions = new CDXOptions();
-        cdxOptions.outputFile = ocdx;
-        cdxOptions.filesList = new ArrayList<String>();
-        cdxOptions.filesList.add(inputFile.getAbsolutePath());
-        (new CDXTask()).runtask(cdxOptions);
-        File ncdx = new File(subdir, gzipFile.getName() + ".cdx");
-        cdxOptions.outputFile = ncdx;
-        cdxOptions.filesList.clear();
-        cdxOptions.filesList.add(gzipFile.getAbsolutePath());
-        (new CDXTask()).runtask(cdxOptions);
-        List<String> ocdxList;
+        CloseableIterator<CaptureSearchResult> ocdxIt;
+        CloseableIterator<CaptureSearchResult> ncdxIt;
         try {
-            ocdxList = Files.readAllLines(ocdx.toPath());
+            ocdxIt = indexFile(inputFile.getAbsolutePath());
         } catch (IOException e) {
             throw new FatalException(e);
         }
-        List<String> ncdxList;
-                try {
-                    ncdxList = Files.readAllLines(ncdx.toPath());
-                } catch (IOException e) {
-                    throw new FatalException(e);
-                }
-        if ( ocdxList.size() != ncdxList.size()) {
-            throw new FatalException("cdx files have different numbers of records.");
+        try {
+            ncdxIt = indexFile(gzipFile.getAbsolutePath());
+        } catch (IOException e) {
+            throw new FatalException(e);
         }
-        Iterator<String> ocdxIt =  ocdxList.iterator();
-        Iterator<String> ncdxIt = ncdxList.iterator();
-        while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
-
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath())) {
+            while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
+                CaptureSearchResult oResult = ocdxIt.next();
+                CaptureSearchResult nResult = ncdxIt.next();
+                writer.write(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            throw new FatalException(e);
+        } finally {
+            try {
+                ocdxIt.close();
+                ncdxIt.close();
+            } catch (IOException e) {
+                throw new FatalException(e);
+            }
         }
     }
 
@@ -102,7 +134,7 @@ public class Consumer  extends CompressFile implements Runnable {
         String inputFilePrefix = inputFileName;
         int depth = Integer.parseInt(PreCompressor.propertiesMap.get("DEPTH"));
         while ( inputFilePrefix.length() < depth )  {
-              inputFilePrefix = '0' + inputFilePrefix;
+            inputFilePrefix = '0' + inputFilePrefix;
         }
         inputFilePrefix = inputFilePrefix.substring(0, depth);
         File subdir = outputRootDir;
@@ -114,16 +146,16 @@ public class Consumer  extends CompressFile implements Runnable {
     }
 
     public void run() {
-          while (!sharedQueue.isEmpty()) {
-              try {
-                  String filename = sharedQueue.take();
-                  precompress(filename);
-              } catch (InterruptedException e) {
-                  //What to do here?
-              } catch (FatalException e) {
-                  //Do some logging and stop the whole thing right here
-                   System.exit(22);
-              }
-          }
+        while (!sharedQueue.isEmpty()) {
+            try {
+                String filename = sharedQueue.take();
+                precompress(filename);
+            } catch (InterruptedException e) {
+                //What to do here?
+            } catch (FatalException e) {
+                //Do some logging and stop the whole thing right here
+                System.exit(22);
+            }
+        }
     }
 }
