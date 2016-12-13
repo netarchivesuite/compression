@@ -92,23 +92,32 @@ public class Consumer  extends CompressFile implements Runnable {
         if (!nsha1.equals(osha1)) {
             final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
-            gzipFile.setWritable(true);
-            System.gc();
+            deleteFile(gzipFile);
+            throw new FatalException(message);
+        }
+        writeLookupFile(inputFile, gzipFile, outputFile);
+        deleteFile(gzipFile);
+    }
+
+    private void deleteFile(File gzipFile) throws FatalException {
+        writeMD5(gzipFile);
+        gzipFile.setWritable(true);
+        System.gc();
+        if (System.getProperty("os.name").contains("Windows")){
+            try {
+                Runtime.getRuntime().exec("DEL /F " + gzipFile.getAbsolutePath());
+            } catch (IOException e) {
+                throw new FatalException(e);
+            }
+            if (gzipFile.exists()) {
+                throw new FatalException("Could not delete " + gzipFile.getAbsolutePath());
+            }
+        } else {
             try {
                 Files.delete(gzipFile.toPath());
             } catch (IOException e) {
                 throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
             }
-            throw new FatalException(message);
-        }
-        writeLookupFile(inputFile, gzipFile, outputFile);
-        writeMD5(gzipFile);
-        gzipFile.setWritable(true);
-        System.gc();
-        try {
-            Files.delete(gzipFile.toPath());
-        } catch (IOException e) {
-            throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
         }
     }
 
