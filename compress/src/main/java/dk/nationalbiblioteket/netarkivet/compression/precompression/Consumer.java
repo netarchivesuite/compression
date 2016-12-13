@@ -84,6 +84,7 @@ public class Consumer  extends CompressFile implements Runnable {
         }
         CompressOptions compressOptions = new CompressOptions();
         compressOptions.dstPath = subdir;
+        compressOptions.bTwopass = true;
         this.compressFile(inputFile, compressOptions);
         File gzipFile = new File (subdir, inputFile.getName() + ".gz");
         String nsha1;
