@@ -105,7 +105,7 @@ public class Consumer  extends CompressFile implements Runnable {
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
             try {
-                Runtime.getRuntime().exec("DEL /F " + gzipFile.getAbsolutePath());
+                Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
             } catch (IOException e) {
                 throw new FatalException(e);
             }
