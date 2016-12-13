@@ -103,6 +103,8 @@ public class Consumer  extends CompressFile implements Runnable {
         }
         writeLookupFile(inputFile, gzipFile, outputFile);
         writeMD5(gzipFile);
+        gzipFile.setWritable(true);
+        System.gc();
         try {
             Files.delete(gzipFile.toPath());
         } catch (IOException e) {
