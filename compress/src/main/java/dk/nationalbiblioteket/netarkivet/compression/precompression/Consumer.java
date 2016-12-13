@@ -108,7 +108,7 @@ public class Consumer  extends CompressFile implements Runnable {
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
             int tries = 0;
-            int maxTries = 10;
+            int maxTries = 20;
             while (gzipFile.exists() && tries < maxTries) {
                 try {
                     Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
@@ -119,15 +119,18 @@ public class Consumer  extends CompressFile implements Runnable {
                         try {
                             sleep(5000);
                         } catch (InterruptedException e) {
-                            throw new FatalException(e);
+                            gzipFile.deleteOnExit();
+                            //throw new FatalException(e);
                         }
                     }
                 } catch (IOException e) {
-                    throw new FatalException(e);
+                    gzipFile.deleteOnExit();
+                    //throw new FatalException(e);
                 }
             }
             if (gzipFile.exists()) {
-                throw new FatalException("Could not delete " + gzipFile.getAbsolutePath());
+                gzipFile.deleteOnExit();
+                //throw new FatalException("Could not delete " + gzipFile.getAbsolutePath());
             }
         } else {
             try {
