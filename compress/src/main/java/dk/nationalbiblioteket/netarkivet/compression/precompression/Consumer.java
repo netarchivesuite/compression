@@ -187,6 +187,7 @@ public class Consumer  extends CompressFile implements Runnable {
                 writer.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
             }
         } catch (IOException e) {
+            //TODO This can happen if the file is corrupt in some way - e.g. empty. Handle case?
             throw new FatalException(e);
         } finally {
             try {
