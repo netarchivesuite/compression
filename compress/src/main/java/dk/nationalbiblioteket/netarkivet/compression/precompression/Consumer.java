@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.configuration.SystemConfiguration;
+import org.apache.commons.io.IOUtils;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
@@ -105,7 +106,9 @@ public class Consumer  extends CompressFile implements Runnable {
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
             try {
-                Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
+                Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
+                IOUtils.copy(p.getInputStream(), System.out);
+                IOUtils.copy(p.getErrorStream(), System.err);
             } catch (IOException e) {
                 throw new FatalException(e);
             }
