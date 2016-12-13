@@ -3,39 +3,32 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FileUtils;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
-import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
-import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
-import org.archive.wayback.resourcestore.indexer.IndexWorker;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
-import org.jwat.tools.tasks.cdx.CDXOptions;
-import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
-import org.jwat.tools.tasks.compress.CompressResult;
-import org.jwat.tools.tasks.compress.CompressTask;
 
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
 
 /**
  * Created by csr on 12/8/16.
  */
 public class Consumer  extends CompressFile implements Runnable {
+
+    private static boolean isDead = false;
+    private static String errorMessage = null;
 
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
@@ -70,7 +63,7 @@ public class Consumer  extends CompressFile implements Runnable {
     }
 
     public void precompress(String filename) throws FatalException {
-        String outputRootDirName = PreCompressor.propertiesMap.get("OUTPUT_ROOT_DIR");
+        String outputRootDirName = PreCompressor.properties.getProperty(PreCompressor.OUTPUT_ROOT_DIR);
         File outputRootDir = new File(outputRootDirName);
         File inputFile = new File(filename);
         File subdir = createAndGetOutputDir(outputRootDir, inputFile.getName().split("-")[0]);
@@ -99,24 +92,54 @@ public class Consumer  extends CompressFile implements Runnable {
             throw new FatalException("Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1);
         }
+        writeLookupFile(inputFile, gzipFile, outputFile);
+        writeMD5(gzipFile);
+        gzipFile.delete();
+    }
+
+    private static synchronized void writeMD5(File gzipFile) throws FatalException {
+        String md5;
+        try {
+            md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
+        } catch (IOException e) {
+            throw new FatalException(e);
+        }
+        String md5Filepath = PreCompressor.properties.getProperty(PreCompressor.MD5_FILEPATH);
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
+            writer.println(gzipFile.getName() + "##" + md5);
+        } catch (IOException e) {
+            throw new FatalException(e);
+        }
+    }
+
+    private static synchronized void writeCompressionLog(String message) throws FatalException {
+        String compressionLogPath = PreCompressor.properties.getProperty(PreCompressor.LOG);
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
+            writer.println(message);
+        } catch (IOException e) {
+            throw new FatalException(e);
+        }
+    }
+
+
+    private void writeLookupFile(File uncompressedFile, File compressedFile, File outputFile) throws FatalException {
         CloseableIterator<CaptureSearchResult> ocdxIt;
         CloseableIterator<CaptureSearchResult> ncdxIt;
         try {
-            ocdxIt = indexFile(inputFile.getAbsolutePath());
+            ocdxIt = indexFile(uncompressedFile.getAbsolutePath());
         } catch (IOException e) {
             throw new FatalException(e);
         }
         try {
-            ncdxIt = indexFile(gzipFile.getAbsolutePath());
+            ncdxIt = indexFile(compressedFile.getAbsolutePath());
         } catch (IOException e) {
             throw new FatalException(e);
         }
-        try (BufferedWriter writer = Files.newBufferedWriter(outputFile.toPath())) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFile, true)))) {
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
                 CaptureSearchResult oResult = ocdxIt.next();
                 CaptureSearchResult nResult = ncdxIt.next();
-                writer.write(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
-                writer.newLine();
+                writer.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
             }
         } catch (IOException e) {
             throw new FatalException(e);
@@ -132,7 +155,7 @@ public class Consumer  extends CompressFile implements Runnable {
 
     private File createAndGetOutputDir(File outputRootDir, String inputFileName) {
         String inputFilePrefix = inputFileName;
-        int depth = Integer.parseInt(PreCompressor.propertiesMap.get("DEPTH"));
+        int depth = Integer.parseInt(PreCompressor.properties.getProperty(PreCompressor.DEPTH));
         while ( inputFilePrefix.length() < depth )  {
             inputFilePrefix = '0' + inputFilePrefix;
         }
@@ -146,15 +169,22 @@ public class Consumer  extends CompressFile implements Runnable {
     }
 
     public void run() {
-        while (!sharedQueue.isEmpty()) {
+        while (!sharedQueue.isEmpty() && !isDead) {
+            String filename = null;
             try {
-                String filename = sharedQueue.take();
+                filename = sharedQueue.take();
                 precompress(filename);
-            } catch (InterruptedException e) {
-                //What to do here?
-            } catch (FatalException e) {
-                //Do some logging and stop the whole thing right here
-                System.exit(22);
+                writeCompressionLog(filename + " processed successfully.");
+            } catch (Exception e) {
+                //Mark as dead and let this thread die.
+                isDead = true;
+                errorMessage = e.getMessage();
+                try {
+                    writeCompressionLog(filename + " not processed successfully");
+                } catch (FatalException e1) {
+                    throw new RuntimeException(e1);
+                }
+                throw new RuntimeException(e);
             }
         }
     }

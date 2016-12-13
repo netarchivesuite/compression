@@ -5,8 +5,7 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.testng.Assert.*;
+import java.util.Properties;
 
 /**
  * Created by csr on 12/8/16.
@@ -33,10 +32,10 @@ public class ConsumerTest {
 
     @org.testng.annotations.Test
     public void testPrecompress() throws Exception {
-        Map<String, String> propertiesMap = new HashMap<String, String>();
-        PreCompressor.propertiesMap = propertiesMap;
-        propertiesMap.put("OUTPUT_ROOT_DIR", OUTPUT_ROOT_DIR);
-        propertiesMap.put("DEPTH", "4");
+        PreCompressor.properties = new Properties();
+        PreCompressor.properties.put("OUTPUT_ROOT_DIR", OUTPUT_ROOT_DIR);
+        PreCompressor.properties.put("DEPTH", "4");
+        PreCompressor.properties.put("MD5_FILEPATH", OUTPUT_ROOT_DIR + "/checksum_CS.md5");
         Consumer consumer = new Consumer(null, 0);
         consumer.precompress(inputFile);
     }

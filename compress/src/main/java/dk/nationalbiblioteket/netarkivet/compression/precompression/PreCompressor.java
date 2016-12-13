@@ -1,11 +1,15 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -16,38 +20,19 @@ import org.apache.commons.io.FileUtils;
  */
 public class PreCompressor {
 
+    public static final String CONFIG = "config";
+    public static final String LOG = "LOG";
+    public static final String OUTPUT_ROOT_DIR = "OUTPUT_ROOT_DIR";
+    public static final String MD5_FILEPATH = "MD5_FILEPATH";
+    public static final String DEPTH = "DEPTH";
+    public static final String[] REQUIRED_PROPS = new String[] {LOG, OUTPUT_ROOT_DIR, MD5_FILEPATH, DEPTH};
+
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
-    public static Map<String, String> propertiesMap;
+    public static Properties properties;
 
 
-    static String logfile;
-
-    static void exit(String message, String filename,  int returnValue) {
-        String output = (new Date()).toString() + " " + filename  + " " + message;
-        if (logfile != null) {
-
-        } else {
-            System.err.println(output);
-        }
-        System.exit(returnValue);
-    }
-
-
-
-    private static Map<String, String> extractConfig(String inputFile, String configFile) throws IOException {
-        Map<String, String> propertiesMap = new HashMap<String, String>();
-        for (Object lineObject: FileUtils.readLines(new File(inputFile))) {
-            String line = (String) lineObject;
-            if (line.contains("=")) {
-                String[] keyValue = line.split("=");
-                propertiesMap.put(keyValue[0], keyValue[1]);
-            }
-        }
-        return propertiesMap;
-    }
-
-    private void fillQueue(String filelistFilename) {
-
+    private void fillQueue(String filelistFilename) throws IOException {
+          sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
     }
 
     private void startConsumers() {
@@ -57,18 +42,14 @@ public class PreCompressor {
         }
     }
 
-    public static void main(String[] args) {
-        PreCompressor preCompressor = new PreCompressor();
-        String inputFile = args[1];
-        String configFile = System.getProperty("config");
-        try {
-            propertiesMap = extractConfig(inputFile, configFile);
-        } catch (IOException e) {
-            exit("Error reading " + configFile, inputFile, 21);
-        }
-        logfile = propertiesMap.get("LOG");
-        preCompressor.fillQueue(inputFile);
-        preCompressor.startConsumers();
+    public static void main(String[] args) throws IOException {
+            PreCompressor preCompressor = new PreCompressor();
+            String inputFile = args[1];
+            String configFile = System.getProperty(CONFIG);
+            properties = new Properties();
+            properties.load(new FileInputStream(new File(configFile)));
+            preCompressor.fillQueue(inputFile);
+            preCompressor.startConsumers();
     }
 
 }
