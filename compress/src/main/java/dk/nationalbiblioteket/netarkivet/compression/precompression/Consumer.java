@@ -89,8 +89,10 @@ public class Consumer  extends CompressFile implements Runnable {
             throw new FatalException(e);
         }
         if (!nsha1.equals(osha1)) {
-            throw new FatalException("Checksum mismatch between " + inputFile.getAbsolutePath()
-                    + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1);
+            final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
+                    + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
+            gzipFile.delete();
+            throw new FatalException(message);
         }
         writeLookupFile(inputFile, gzipFile, outputFile);
         writeMD5(gzipFile);

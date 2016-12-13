@@ -44,7 +44,7 @@ public class PreCompressor {
 
     public static void main(String[] args) throws IOException {
             PreCompressor preCompressor = new PreCompressor();
-            String inputFile = args[1];
+            String inputFile = args[0];
             String configFile = System.getProperty(CONFIG);
             properties = new Properties();
             properties.load(new FileInputStream(new File(configFile)));
