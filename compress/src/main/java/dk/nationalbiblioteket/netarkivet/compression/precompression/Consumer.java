@@ -24,6 +24,8 @@ import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
 import java.util.zip.GZIPInputStream;
 
+import static java.lang.Thread.sleep;
+
 /**
  * Created by csr on 12/8/16.
  */
@@ -105,12 +107,24 @@ public class Consumer  extends CompressFile implements Runnable {
         gzipFile.setWritable(true);
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
-            try {
-                Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
-                IOUtils.copy(p.getInputStream(), System.out);
-                IOUtils.copy(p.getErrorStream(), System.err);
-            } catch (IOException e) {
-                throw new FatalException(e);
+            int tries = 0;
+            int maxTries = 10;
+            while (gzipFile.exists() && tries < maxTries) {
+                try {
+                    Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
+                    IOUtils.copy(p.getInputStream(), System.out);
+                    IOUtils.copy(p.getErrorStream(), System.err);
+                    tries ++;
+                    if (gzipFile.exists()) {
+                        try {
+                            sleep(5000);
+                        } catch (InterruptedException e) {
+                            throw new FatalException(e);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new FatalException(e);
+                }
             }
             if (gzipFile.exists()) {
                 throw new FatalException("Could not delete " + gzipFile.getAbsolutePath());
