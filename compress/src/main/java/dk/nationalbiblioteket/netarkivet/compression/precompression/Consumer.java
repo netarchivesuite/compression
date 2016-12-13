@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.configuration.SystemConfiguration;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
@@ -91,12 +92,22 @@ public class Consumer  extends CompressFile implements Runnable {
         if (!nsha1.equals(osha1)) {
             final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
-            gzipFile.delete();
+            gzipFile.setWritable(true);
+            System.gc();
+            try {
+                Files.delete(gzipFile.toPath());
+            } catch (IOException e) {
+                throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
+            }
             throw new FatalException(message);
         }
         writeLookupFile(inputFile, gzipFile, outputFile);
         writeMD5(gzipFile);
-        gzipFile.delete();
+        try {
+            Files.delete(gzipFile.toPath());
+        } catch (IOException e) {
+            throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
+        }
     }
 
     private static synchronized void writeMD5(File gzipFile) throws FatalException {
