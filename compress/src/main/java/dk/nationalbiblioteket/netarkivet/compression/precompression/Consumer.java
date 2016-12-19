@@ -5,11 +5,14 @@ import java.io.File;
 import java.io.FileInputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.IOUtils;
+import java.util.logging.Level;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
+import org.archive.wayback.resourceindex.cdx.SearchResultToCDXFormatAdapter;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
@@ -20,8 +23,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.concurrent.BlockingQueue;
+import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 
 import static java.lang.Thread.sleep;
@@ -30,6 +33,13 @@ import static java.lang.Thread.sleep;
  * Created by csr on 12/8/16.
  */
 public class Consumer  extends CompressFile implements Runnable {
+
+
+    static {
+        Logger logger = Logger.getLogger("org.archive.wayback.resourcestore.indexer");
+        logger.setLevel(Level.WARNING);
+    }
+
 
     private static boolean isDead = false;
     private static String errorMessage = null;
@@ -66,28 +76,59 @@ public class Consumer  extends CompressFile implements Runnable {
         warcIndexer.setCanonicalizer(canonicalizer);
     }
 
-    public void precompress(String filename) throws FatalException {
+    public void precompress(String filename) throws FatalException, WeirdFileException {
         String outputRootDirName = PreCompressor.properties.getProperty(PreCompressor.OUTPUT_ROOT_DIR);
         File outputRootDir = new File(outputRootDirName);
         File inputFile = new File(filename);
+        if (inputFile.length() == 0) {
+            writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
+            return;
+        }
         File subdir = createAndGetOutputDir(outputRootDir, inputFile.getName().split("-")[0]);
         File outputFile = new File(subdir, inputFile.getName() + ".ifile.cdx");
         if (outputFile.exists()) {
             //already done this one
             return;
         }
+        File gzipFile = doCompression(inputFile);
+        checkConsistency(inputFile, gzipFile);
+        if (!gzipFile.getName().contains("metadata")) {
+            writeiFile(inputFile, gzipFile, outputFile);
+        } else {
+            try {
+                //Create an empty file here as a placeholder to show that this input file has been processed.
+                outputFile.createNewFile();
+            } catch (IOException e) {
+                throw new FatalException("Could not create ifile " + outputFile.getAbsolutePath());
+            }
+        }
+        deleteFile(gzipFile, true);
+    }
+
+    private File doCompression(File inputFile) throws WeirdFileException {
+        File tmpdir = (new File(PreCompressor.properties.getProperty(PreCompressor.TEMP_DIR)));
+        tmpdir.mkdirs();
+        CompressOptions compressOptions = new CompressOptions();
+        compressOptions.dstPath = tmpdir;
+        compressOptions.bTwopass = true;
+        compressOptions.compressionLevel = 9;
+        this.compressFile(inputFile, compressOptions);
+        File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
+        if (!gzipFile.exists()) {
+            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
+        } else {
+            return gzipFile;
+        }
+    }
+
+    private void checkConsistency(File inputFile, File gzipFile) throws FatalException {
+        String nsha1;
         String osha1;
         try {
             osha1 = DigestUtils.sha1Hex(new FileInputStream(inputFile));
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new FatalException(e);
         }
-        CompressOptions compressOptions = new CompressOptions();
-        compressOptions.dstPath = subdir;
-        compressOptions.bTwopass = true;
-        this.compressFile(inputFile, compressOptions);
-        File gzipFile = new File (subdir, inputFile.getName() + ".gz");
-        String nsha1;
         try {
             nsha1 = DigestUtils.sha1Hex(new GZIPInputStream(new FileInputStream(gzipFile)));
         } catch (IOException e) {
@@ -96,15 +137,15 @@ public class Consumer  extends CompressFile implements Runnable {
         if (!nsha1.equals(osha1)) {
             final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
-            deleteFile(gzipFile);
+            deleteFile(gzipFile, false);
             throw new FatalException(message);
         }
-        writeLookupFile(inputFile, gzipFile, outputFile);
-        deleteFile(gzipFile);
     }
 
-    private void deleteFile(File gzipFile) throws FatalException {
-        writeMD5(gzipFile);
+    private void deleteFile(File gzipFile, boolean writeMD5) throws FatalException {
+        if (writeMD5) {
+            writeMD5(gzipFile);
+        }
         gzipFile.setWritable(true);
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
@@ -131,7 +172,6 @@ public class Consumer  extends CompressFile implements Runnable {
             }
             if (gzipFile.exists()) {
                 gzipFile.deleteOnExit();
-                //throw new FatalException("Could not delete " + gzipFile.getAbsolutePath());
             }
         } else {
             try {
@@ -167,28 +207,40 @@ public class Consumer  extends CompressFile implements Runnable {
     }
 
 
-    private void writeLookupFile(File uncompressedFile, File compressedFile, File outputFile) throws FatalException {
+    private void writeiFile(File uncompressedFile, File compressedFile, File outputFile) throws FatalException, WeirdFileException {
         CloseableIterator<CaptureSearchResult> ocdxIt;
         CloseableIterator<CaptureSearchResult> ncdxIt;
+        File ncdxFile = new File(outputFile.getParentFile(), compressedFile.getName() + ".cdx");
+        String cdxSpec = " CDX N b a m s k r M V g";
+        SearchResultToCDXFormatAdapter adapter;
+        try {
+            adapter = new SearchResultToCDXFormatAdapter(new CDXFormat(cdxSpec));
+        } catch (CDXFormatException e) {
+            throw new FatalException(e);
+        }
         try {
             ocdxIt = indexFile(uncompressedFile.getAbsolutePath());
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new WeirdFileException("Problem reading " + uncompressedFile.getAbsolutePath(), e);
         }
         try {
             ncdxIt = indexFile(compressedFile.getAbsolutePath());
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new WeirdFileException("Problem reading " + compressedFile.getAbsolutePath(), e);
         }
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(outputFile, true)))) {
+        try (
+                PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(outputFile, true)));
+                PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(ncdxFile, true)))
+        ) {
+            cdxWriter.println(cdxSpec);
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
                 CaptureSearchResult oResult = ocdxIt.next();
                 CaptureSearchResult nResult = ncdxIt.next();
-                writer.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                cdxWriter.println(adapter.adapt(nResult));
             }
         } catch (IOException e) {
-            //TODO This can happen if the file is corrupt in some way - e.g. empty. Handle case?
-            throw new FatalException(e);
+            throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
         } finally {
             try {
                 ocdxIt.close();
@@ -221,6 +273,14 @@ public class Consumer  extends CompressFile implements Runnable {
                 filename = sharedQueue.take();
                 precompress(filename);
                 writeCompressionLog(filename + " processed successfully.");
+            } catch (WeirdFileException we) {
+                try {
+                    writeCompressionLog(filename + " could not be processed.");
+                } catch (FatalException e) {
+                    isDead = true;
+                    errorMessage = e.getMessage();
+                    throw new RuntimeException("Could not write log entry", e);
+                }
             } catch (Exception e) {
                 //Mark as dead and let this thread die.
                 isDead = true;

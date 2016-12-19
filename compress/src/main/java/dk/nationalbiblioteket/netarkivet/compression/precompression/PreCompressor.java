@@ -25,7 +25,8 @@ public class PreCompressor {
     public static final String OUTPUT_ROOT_DIR = "OUTPUT_ROOT_DIR";
     public static final String MD5_FILEPATH = "MD5_FILEPATH";
     public static final String DEPTH = "DEPTH";
-    public static final String[] REQUIRED_PROPS = new String[] {LOG, OUTPUT_ROOT_DIR, MD5_FILEPATH, DEPTH};
+    public static final String TEMP_DIR = "TEMP_DIR";
+    public static final String[] REQUIRED_PROPS = new String[] {LOG, OUTPUT_ROOT_DIR, MD5_FILEPATH, DEPTH, TEMP_DIR};
 
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
     public static Properties properties;

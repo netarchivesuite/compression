@@ -36,6 +36,7 @@ public class ConsumerTest {
         PreCompressor.properties.put("OUTPUT_ROOT_DIR", OUTPUT_ROOT_DIR);
         PreCompressor.properties.put("DEPTH", "4");
         PreCompressor.properties.put("MD5_FILEPATH", OUTPUT_ROOT_DIR + "/checksum_CS.md5");
+        PreCompressor.properties.put(PreCompressor.TEMP_DIR, "/tmp");
         Consumer consumer = new Consumer(null, 0);
         consumer.precompress(inputFile);
     }

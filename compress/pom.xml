@@ -35,6 +35,11 @@
             <artifactId>openwayback-core</artifactId>
             <version>2.3.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.netarchivesuite</groupId>
+            <artifactId>harvester-core</artifactId>
+            <version>5.2.2</version>
+        </dependency>
     </dependencies>
 
     <build>
