@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 
+import dk.nationalbiblioteket.netarkivet.compression.Util;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import java.util.logging.Level;
@@ -78,13 +79,12 @@ public class Consumer  extends CompressFile implements Runnable {
 
     public void precompress(String filename) throws FatalException, WeirdFileException {
         String outputRootDirName = PreCompressor.properties.getProperty(PreCompressor.OUTPUT_ROOT_DIR);
-        File outputRootDir = new File(outputRootDirName);
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
             return;
         }
-        File subdir = createAndGetOutputDir(outputRootDir, inputFile.getName().split("-")[0]);
+        File subdir = Util.getIFileSubdir(inputFile.getName(), true);
         File outputFile = new File(subdir, inputFile.getName() + ".ifile.cdx");
         if (outputFile.exists()) {
             //already done this one
@@ -249,21 +249,6 @@ public class Consumer  extends CompressFile implements Runnable {
                 throw new FatalException(e);
             }
         }
-    }
-
-    private File createAndGetOutputDir(File outputRootDir, String inputFileName) {
-        String inputFilePrefix = inputFileName;
-        int depth = Integer.parseInt(PreCompressor.properties.getProperty(PreCompressor.DEPTH));
-        while ( inputFilePrefix.length() < depth )  {
-            inputFilePrefix = '0' + inputFilePrefix;
-        }
-        inputFilePrefix = inputFilePrefix.substring(0, depth);
-        File subdir = outputRootDir;
-        for (char subdirName: inputFilePrefix.toCharArray()) {
-            subdir = new File(subdir, String.valueOf(subdirName));
-            subdir.mkdirs();
-        }
-        return subdir;
     }
 
     public void run() {

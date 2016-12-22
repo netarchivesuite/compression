@@ -1,10 +1,17 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-import dk.netarkivet.common.utils.SystemUtils;
+import com.google.common.primitives.Bytes;
+import dk.netarkivet.common.utils.Settings;
+import dk.netarkivet.harvester.HarvesterSettings;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.jwat.arc.ArcReader;
+import org.jwat.arc.ArcReaderFactory;
+import org.jwat.arc.ArcReaderUncompressed;
+import org.jwat.arc.ArcRecord;
+import org.jwat.arc.ArcRecordBase;
 import org.jwat.common.ANVLRecord;
 import org.jwat.common.HeaderLine;
 import org.jwat.common.Payload;
@@ -22,25 +29,29 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Iterator;
 
+import static dk.netarkivet.harvester.HarvesterSettings.*;
+import static dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter.*;
+
 /**
  * Created by csr on 12/19/16.
  */
 public class Testbed {
 
     String input_warc = "src/test/data/10-metadata-1.warc";
-    String output_warc_dir_S = "src/test/working";
-    File output_warc_dir = new File(output_warc_dir_S);
+    String input_arc = "src/test/data/3-metadata-1.arc";
+    String output_dir_S = "src/test/working";
+    File output_dir = new File(output_dir_S);
 
     @BeforeTest
     public void setUp() throws IOException {
-        FileUtils.deleteDirectory(output_warc_dir);
-        FileUtils.forceMkdir(output_warc_dir);
+        FileUtils.deleteDirectory(output_dir);
+        FileUtils.forceMkdir(output_dir);
     }
 
     @Test
-    public void testReadWrite() throws IOException {
-        File output_file = new File(output_warc_dir, "output.warc.gz");
-        MetadataFileWriter writer = MetadataFileWriter.createWriter(output_file);
+    public void testReadWriteWarc() throws IOException {
+        File output_file = new File(output_dir, (new File(input_warc)).getName()+".gz");
+        MetadataFileWriter writer = createWriter(output_file);
 
 
         InputStream is = Files.newInputStream(Paths.get(input_warc));
@@ -69,8 +80,55 @@ public class Testbed {
             }
         }
         writer.close();
-
     }
+
+    @Test
+    public void testReadWriteArc() throws IOException {
+        File output_file = new File(output_dir, (new File(input_arc)).getName() + ".gz" );
+        Settings.set(METADATA_FORMAT, "arc");
+        MetadataFileWriter writer = createWriter(output_file);
+        InputStream is = Files.newInputStream(Paths.get(input_arc));
+        ArcReader reader = ArcReaderFactory.getReader(is);
+        final Iterator<ArcRecordBase> iterator = reader.iterator();
+        while (iterator.hasNext()) {
+            ArcRecordBase recordBase = iterator.next();
+            byte[] payload = new byte[]{};
+            if (recordBase.hasPayload()) {
+                payload = IOUtils.toByteArray(recordBase.getPayloadContent());
+            }
+            writer.write(recordBase.getUrlStr(), recordBase.getContentTypeStr(), recordBase.getIpAddress(), System.currentTimeMillis(), payload);
+        }
+        writer.close();
+    }
+
+    /**
+     * TODO
+     * Problem here is that the original ArcRecord headers are not kept. The fix would be to add a method to MetadaFileWriterWarc that
+     * takes custom headers.
+     * @throws IOException
+     */
+    @Test
+    public void testReadArcWriteWarc() throws IOException {
+        File output_file = new File(output_dir, (new File(input_arc)).getName() + ".warc.gz" );
+        Settings.set(METADATA_FORMAT, "warc");
+        MetadataFileWriter writer = createWriter(output_file);
+        ANVLRecord warcInfoRecord = new ANVLRecord();
+        warcInfoRecord.addLabelValue("replaces", (new File(input_arc)).getName());
+        ((MetadataFileWriterWarc) writer).insertInfoRecord(warcInfoRecord);
+        InputStream is = Files.newInputStream(Paths.get(input_arc));
+        ArcReader reader = ArcReaderFactory.getReader(is);
+        final Iterator<ArcRecordBase> iterator = reader.iterator();
+        while (iterator.hasNext()) {
+            ArcRecordBase recordBase = iterator.next();
+            byte[] payload = new byte[]{};
+            if (recordBase.hasPayload()) {
+                payload = IOUtils.toByteArray(recordBase.getPayloadContent());
+            }
+            writer.write(recordBase.getUrlStr(), recordBase.getContentTypeStr(), recordBase.getIpAddress(), System.currentTimeMillis(), payload);
+        }
+        writer.close();
+    }
+
 
     public static String valueOrNull(HeaderLine line) {
         if (line == null) {
