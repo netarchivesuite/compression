@@ -4,7 +4,12 @@ import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
+import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import org.apache.commons.io.IOUtils;
+import org.jwat.common.ANVLRecord;
+import org.jwat.common.HeaderLine;
+import org.jwat.common.Payload;
+import org.jwat.warc.WarcConstants;
 import org.jwat.warc.WarcReader;
 import org.jwat.warc.WarcReaderFactory;
 import org.jwat.warc.WarcRecord;
@@ -77,11 +82,45 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         final Iterator<WarcRecord> iterator = reader.iterator();
         try {
             while (iterator.hasNext()) {
+                WarcRecord record = iterator.next();
+                if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("warcinfo")) {
+                    ANVLRecord infoPayload = new ANVLRecord();
+                    infoPayload.addLabelValue("replaces", record.getHeader(WarcConstants.FN_WARC_FILENAME).value);
+                    infoPayload.addValue(IOUtils.toString(record.getPayloadContent()));
+                    ((MetadataFileWriterWarc) writer).insertInfoRecord(infoPayload);
 
+                } else if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("resource")) {
+                    final HeaderLine uriLine = record.getHeader(WarcConstants.FN_WARC_TARGET_URI);
+                    final HeaderLine contentTypeLine = record.getHeader(WarcConstants.FN_CONTENT_TYPE);
+                    final HeaderLine hostIpLine = record.getHeader(WarcConstants.FN_WARC_IP_ADDRESS);
+                    byte[] payloadBytes = new byte[]{};
+
+                    if (record.hasPayload()) {
+                        Payload payload = record.getPayload();
+                        payloadBytes = IOUtils.toByteArray(payload.getInputStreamComplete());
+                    }
+                    if (uriLine.value.contains("crawl.log")) {
+                        byte[] dedupPayload = getDedupPayload(payloadBytes);
+                        writer.write("dedup uri header", "dedup content type", "ip", System.currentTimeMillis(), dedupPayload);
+                    } else if (uriLine.value.contains("index/cdx")) {
+                        payloadBytes = getUpdatedCdxPayload(payloadBytes);
+                    }
+                    writer.write(valueOrNull(uriLine),
+                            valueOrNull(contentTypeLine),
+                            valueOrNull(hostIpLine), System.currentTimeMillis(), payloadBytes);
+                }
             }
         } finally {
             writer.close();
         }
+    }
+
+    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) {
+           return "updatedcdxgoeshere".getBytes();
+    }
+
+    private byte[] getDedupPayload(byte[] crawllogPayload) {
+           return "deduppayloadgoeshere".getBytes();
     }
 
     private void processArcfile(File input, File output) {
@@ -103,4 +142,12 @@ public class MetadatafileGeneratorRunnable implements Runnable {
              }
          }
     }
+    public static String valueOrNull(HeaderLine line) {
+        if (line == null) {
+            return null;
+        } else {
+            return line.value;
+        }
+    }
+
 }
