@@ -21,6 +21,8 @@ import java.util.concurrent.ConcurrentSkipListMap;
  */
 public class IFileCacheImpl implements IFileCache {
 
+    private static IFileCacheImpl instance;
+
     private ArrayBlockingQueue<String> elementQueue;
 
 
@@ -28,8 +30,16 @@ public class IFileCacheImpl implements IFileCache {
             new ConcurrentHashMap<String, ConcurrentSkipListMap<Long, IFileEntry>>();
 
 
-    public IFileCacheImpl(int size) {
-        elementQueue = new ArrayBlockingQueue<String>(size);
+    private IFileCacheImpl() {
+        int cacheSize = Integer.parseInt(Util.getProperties().getProperty(Util.CACHE_SIZE));
+        elementQueue = new ArrayBlockingQueue<String>(cacheSize);
+    }
+
+    public static synchronized IFileCacheImpl getIFileCacheImpl() {
+        if (instance == null) {
+            instance = new IFileCacheImpl();
+        }
+        return instance;
     }
 
 

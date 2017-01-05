@@ -1,6 +1,5 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-import dk.netarkivet.common.utils.KeyValuePair;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
