@@ -6,6 +6,10 @@ import dk.nationalbiblioteket.netarkivet.compression.precompression.WeirdFileExc
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import org.apache.commons.io.IOUtils;
+import org.archive.util.io.RuntimeIOException;
+import org.archive.wayback.core.CaptureSearchResult;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
+import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
 import org.jwat.common.ANVLRecord;
 import org.jwat.common.HeaderLine;
 import org.jwat.common.Payload;
@@ -27,6 +31,7 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 
+import static dk.nationalbiblioteket.netarkivet.compression.metadata.IFileCacheImpl.getIFileCacheImpl;
 import static dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter.createWriter;
 
 /**
@@ -103,6 +108,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         byte[] dedupPayload = getDedupPayload(payloadBytes);
                         writer.write("dedup uri header", "dedup content type", "ip", System.currentTimeMillis(), dedupPayload);
                     } else if (uriLine.value.contains("index/cdx")) {
+                        uriLine.value = uriLine.value.replace("arc", "arc.gz");
                         payloadBytes = getUpdatedCdxPayload(payloadBytes);
                     }
                     writer.write(valueOrNull(uriLine),
@@ -110,13 +116,40 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             valueOrNull(hostIpLine), System.currentTimeMillis(), payloadBytes);
                 }
             }
+        } catch (CDXFormatException e) {
+            throw new RuntimeException(e);
         } finally {
             writer.close();
         }
     }
 
-    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) {
-           return "updatedcdxgoeshere".getBytes();
+    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) throws CDXFormatException, FileNotFoundException {
+        String cdxSpec = " CDX A r b m S g V k";
+        CDXFormat cdxFormat = new CDXFormat(cdxSpec);
+        String[] payload = new String(cdxPayload).split("\\r\\n|\\n|\\r");;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < payload.length; i++) {
+            String line = payload[i];
+            CaptureSearchResult captureSearchResult = null;
+            try {
+                captureSearchResult = cdxFormat.parseResult(line);
+            } catch (CDXFormatException e) {
+                throw new RuntimeIOException("Cannot parse " + line);
+            }
+            String file = captureSearchResult.getFile();
+            long oldOffset = captureSearchResult.getOffset();
+            IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(file, oldOffset);
+            captureSearchResult.setOffset(iFileEntry.getNewOffset());
+            captureSearchResult.setFile(file + ".gz");
+            line = cdxFormat.serializeResult(captureSearchResult);
+
+
+            sb.append(line);
+            if (i != payload.length -1) {
+                sb.append("\n");
+            }
+        }
+        return sb.toString().getBytes();
     }
 
     private byte[] getDedupPayload(byte[] crawllogPayload) {

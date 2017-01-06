@@ -15,7 +15,7 @@ import static org.testng.Assert.*;
 public class MetadatafileGeneratorRunnableTest {
 
     String IFILE_DIR = "src/test/data/ifiles";
-    int Depth = 4;
+    String Depth = "4";
     String INPUT_FILE = "src/test/data/3-metadata-1.warc";
     String NMETADATA_DIR = "output";
 
