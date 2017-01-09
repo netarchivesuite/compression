@@ -5,7 +5,9 @@ import dk.nationalbiblioteket.netarkivet.compression.precompression.FatalExcepti
 import dk.nationalbiblioteket.netarkivet.compression.precompression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
+import dk.netarkivet.wayback.batch.DeduplicateToCDXAdapter;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.archive.util.io.RuntimeIOException;
 import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
@@ -69,7 +71,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
         final Path outputDirPath = Paths.get(properties.getProperty(Util.NMETADATA_DIR));
         Files.createDirectories(outputDirPath);
-        Path outputFilePath = outputDirPath.resolve(inputFile.getName() + ".gz");
+        Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
         //Files.createFile(outputFilePath);
         if (filename.endsWith(".warc")) {
              processWarcfile(inputFile, outputFilePath.toFile());
@@ -105,8 +107,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         payloadBytes = IOUtils.toByteArray(payload.getInputStreamComplete());
                     }
                     if (uriLine.value.contains("crawl.log")) {
+                        //Ideally would like to include harvestid, harvestnum, jobid in following uri.
+                        String dedupURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
                         byte[] dedupPayload = getDedupPayload(payloadBytes);
-                        writer.write("dedup uri header", "dedup content type", "ip", System.currentTimeMillis(), dedupPayload);
+
+                        writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload);
                     } else if (uriLine.value.contains("index/cdx")) {
                         uriLine.value = uriLine.value.replace("arc", "arc.gz");
                         payloadBytes = getUpdatedCdxPayload(payloadBytes);
@@ -126,7 +131,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     private byte[] getUpdatedCdxPayload(byte[] cdxPayload) throws CDXFormatException, FileNotFoundException {
         String cdxSpec = " CDX A r b m S g V k";
         CDXFormat cdxFormat = new CDXFormat(cdxSpec);
-        String[] payload = new String(cdxPayload).split("\\r\\n|\\n|\\r");;
+        String[] payload = new String(cdxPayload).split("\\r\\n|\\n|\\r");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < payload.length; i++) {
             String line = payload[i];
@@ -152,8 +157,28 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return sb.toString().getBytes();
     }
 
-    private byte[] getDedupPayload(byte[] crawllogPayload) {
-           return "deduppayloadgoeshere".getBytes();
+    private byte[] getDedupPayload(byte[] crawllogPayload) throws FileNotFoundException {
+        String[] input = new String(crawllogPayload).split("\\r\\n|\\n|\\r");
+        StringBuffer output = new StringBuffer();
+        DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
+        boolean first = true;
+        for (String line: input) {
+            if (line.contains("duplicate:")) {
+                String original = adapter.adaptLine(line);
+                String[] split = StringUtils.split(original);
+                String filename = split[8];
+                String offset = split[7];
+                IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
+                split[8] = filename + ".gz";
+                split[7] = "" + iFileEntry.getNewOffset();
+                if (!first) {
+                    output.append("\n");
+                }
+                first = false;
+                output.append(StringUtils.join(split, ' '));
+            }
+        }
+        return output.toString().getBytes();
     }
 
     private void processArcfile(File input, File output) {

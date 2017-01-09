@@ -26,6 +26,7 @@ public class MetadatafileGeneratorRunnableTest {
         Util.properties.put(Util.DEPTH, Depth);
         Util.properties.put(Util.NMETADATA_DIR, NMETADATA_DIR);
         Util.properties.put(Util.CACHE_SIZE, "1000");
+        Util.properties.put(Util.METADATA_GENERATION, "4");
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile(INPUT_FILE);
         File input = new File(INPUT_FILE);
