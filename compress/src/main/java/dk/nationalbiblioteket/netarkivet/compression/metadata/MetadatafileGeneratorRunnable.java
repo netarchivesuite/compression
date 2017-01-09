@@ -4,6 +4,7 @@ import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
+import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import dk.netarkivet.wayback.batch.DeduplicateToCDXAdapter;
 import org.apache.commons.io.IOUtils;
@@ -12,6 +13,9 @@ import org.archive.util.io.RuntimeIOException;
 import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
+import org.jwat.arc.ArcReader;
+import org.jwat.arc.ArcReaderFactory;
+import org.jwat.arc.ArcRecordBase;
 import org.jwat.common.ANVLRecord;
 import org.jwat.common.HeaderLine;
 import org.jwat.common.Payload;
@@ -21,6 +25,7 @@ import org.jwat.warc.WarcReaderFactory;
 import org.jwat.warc.WarcRecord;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -82,8 +87,41 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
     }
 
+    private void processArcfile(File input, File output) throws IOException {
+        MetadataFileWriter writer = MetadataFileWriterArc.createWriter(output);
+        InputStream is = new FileInputStream(input);
+        ArcReader reader = ArcReaderFactory.getReader(is);
+        final Iterator<ArcRecordBase> iterator = reader.iterator();
+        try {
+            while (iterator.hasNext()) {
+                ArcRecordBase recordBase = iterator.next();
+                byte[] payload = new byte[]{};
+                if (recordBase.hasPayload()) {
+                    payload = IOUtils.toByteArray(recordBase.getPayloadContent());
+                }
+                String url = recordBase.getUrlStr();
+                if (url.contains("crawl.log")) {
+                    String dedupURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
+                    byte[] dedupPayload = getDedupPayload(payload);
+                    writer.write(dedupURI, "text/plain", recordBase.getIpAddress(),
+                    System.currentTimeMillis(), dedupPayload);
+                } else if (url.contains("index/cdx")) {
+                    payload = getUpdatedCdxPayload(payload);
+                    url = url.replace(".arc", ".arc.gz");
+                }
+                writer.write(url, recordBase.getContentTypeStr(),
+                        recordBase.getIpAddress(), System.currentTimeMillis(), payload);
+            }
+        } catch (CDXFormatException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
+            writer.close();
+        }
+    }
+
     private void processWarcfile(File input, File output) throws IOException {
-        MetadataFileWriter writer = createWriter(output);
+        MetadataFileWriter writer = MetadataFileWriterWarc.createWriter(output);
         InputStream is = new FileInputStream(input);
         WarcReader reader = WarcReaderFactory.getReader(is);
         final Iterator<WarcRecord> iterator = reader.iterator();
@@ -106,11 +144,12 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         Payload payload = record.getPayload();
                         payloadBytes = IOUtils.toByteArray(payload.getInputStreamComplete());
                     }
+                    //Note that in the case of the crawl log we add a new record, whereas in the case of
+                    //the cdx records we alter the record.
                     if (uriLine.value.contains("crawl.log")) {
                         //Ideally would like to include harvestid, harvestnum, jobid in following uri.
                         String dedupURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
                         byte[] dedupPayload = getDedupPayload(payloadBytes);
-
                         writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload);
                     } else if (uriLine.value.contains("index/cdx")) {
                         uriLine.value = uriLine.value.replace("arc", "arc.gz");
@@ -161,7 +200,6 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         String[] input = new String(crawllogPayload).split("\\r\\n|\\n|\\r");
         StringBuffer output = new StringBuffer();
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
-        boolean first = true;
         for (String line: input) {
             if (line.contains("duplicate:")) {
                 String original = adapter.adaptLine(line);
@@ -171,19 +209,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
                 split[8] = filename + ".gz";
                 split[7] = "" + iFileEntry.getNewOffset();
-                if (!first) {
-                    output.append("\n");
-                }
-                first = false;
                 output.append(StringUtils.join(split, ' '));
+                output.append("\n");
             }
         }
         return output.toString().getBytes();
     }
 
-    private void processArcfile(File input, File output) {
-        throw new RuntimeException("Not implemented");
-    }
+
 
     @Override
     public void run() {

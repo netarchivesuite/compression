@@ -20,7 +20,7 @@ public class MetadatafileGeneratorRunnableTest {
     String NMETADATA_DIR = "output";
 
     @Test
-    public void testProcessFile() throws Exception {
+    public void testProcessWarcFile() throws Exception {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, IFILE_DIR);
         Util.properties.put(Util.DEPTH, Depth);
@@ -30,10 +30,25 @@ public class MetadatafileGeneratorRunnableTest {
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile(INPUT_FILE);
         File input = new File(INPUT_FILE);
-        File output = new File(new File(NMETADATA_DIR), input.getName() + ".gz" );
+        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.warc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
+    }
 
+    @Test
+    public void testProcessArcFile() throws Exception {
+        Util.properties = new Properties();
+        Util.properties.put(Util.IFILE_ROOT_DIR, IFILE_DIR);
+        Util.properties.put(Util.DEPTH, Depth);
+        Util.properties.put(Util.NMETADATA_DIR, NMETADATA_DIR);
+        Util.properties.put(Util.CACHE_SIZE, "1000");
+        Util.properties.put(Util.METADATA_GENERATION, "4");
+        MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
+        metadatafileGeneratorRunnable.processFile("src/test/data/3-metadata-1.arc");
+        File input = new File(INPUT_FILE);
+        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
+        assertTrue(output.exists());
+        assertTrue(output.length() > 0);
     }
 
 }
