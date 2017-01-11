@@ -2,7 +2,6 @@ package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.precompression.FatalException;
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;

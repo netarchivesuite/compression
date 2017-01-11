@@ -1,8 +1,7 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.precompression.FatalException;
-import dk.nationalbiblioteket.netarkivet.compression.precompression.WeirdFileException;
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
@@ -25,7 +24,6 @@ import org.jwat.warc.WarcReaderFactory;
 import org.jwat.warc.WarcRecord;
 
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -37,9 +35,6 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
-
-import static dk.nationalbiblioteket.netarkivet.compression.metadata.IFileCacheImpl.getIFileCacheImpl;
-import static dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter.createWriter;
 
 /**
  * Created by csr on 1/4/17.

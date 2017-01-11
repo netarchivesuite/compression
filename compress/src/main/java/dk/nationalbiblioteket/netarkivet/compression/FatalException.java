@@ -1,4 +1,4 @@
-package dk.nationalbiblioteket.netarkivet.compression.precompression;
+package dk.nationalbiblioteket.netarkivet.compression;
 
 /**
  * Exceptions which should never occur like mismatched checksums

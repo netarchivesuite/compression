@@ -4,7 +4,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 
+import dk.nationalbiblioteket.netarkivet.compression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import java.util.logging.Level;
@@ -189,7 +191,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         } catch (IOException e) {
             throw new FatalException(e);
         }
-        String md5Filepath = Util.getProperties().getProperty(PreCompressor.MD5_FILEPATH);
+        String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
             writer.println(gzipFile.getName() + "##" + md5);
         } catch (IOException e) {
@@ -198,7 +200,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
     private static synchronized void writeCompressionLog(String message) throws FatalException {
-        String compressionLogPath = Util.getProperties().getProperty(PreCompressor.LOG);
+        String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
             writer.println(message);
         } catch (IOException e) {
