@@ -202,14 +202,16 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         for (String line: input) {
             if (line.contains("duplicate:")) {
                 String original = adapter.adaptLine(line);
-                String[] split = StringUtils.split(original);
-                String filename = split[8];
-                String offset = split[7];
-                IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
-                split[8] = filename + ".gz";
-                split[7] = "" + iFileEntry.getNewOffset();
-                output.append(StringUtils.join(split, ' '));
-                output.append("\n");
+                if (original != null) {
+                    String[] split = StringUtils.split(original);
+                    String filename = split[8];
+                    String offset = split[7];
+                    IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
+                    split[8] = filename + ".gz";
+                    split[7] = "" + iFileEntry.getNewOffset();
+                    output.append(StringUtils.join(split, ' '));
+                    output.append("\n");
+                }
             }
         }
         return output.toString().getBytes();
