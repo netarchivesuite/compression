@@ -22,6 +22,8 @@ import org.jwat.warc.WarcConstants;
 import org.jwat.warc.WarcReader;
 import org.jwat.warc.WarcReaderFactory;
 import org.jwat.warc.WarcRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,7 +46,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
     private static boolean isDead = false;
-
+    Logger logger = LoggerFactory.getLogger(MetadatafileGeneratorRunnable.class);
     public MetadatafileGeneratorRunnable(BlockingQueue<String> sharedQueue, int threadNo) {
         this.sharedQueue = sharedQueue;
         this.threadNo = threadNo;
@@ -76,7 +78,6 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         final Path outputDirPath = Paths.get(outputDir);
         Files.createDirectories(outputDirPath);
         Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
-        //Files.createFile(outputFilePath);
         if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
              processWarcfile(inputFile, outputFilePath.toFile());
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
@@ -87,6 +88,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     }
 
     private void processArcfile(File input, File output) throws IOException {
+        logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterArc.createWriter(output);
         InputStream is = new FileInputStream(input);
         ArcReader reader = ArcReaderFactory.getReader(is);
@@ -111,8 +113,6 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 writer.write(url, recordBase.getContentTypeStr(),
                         recordBase.getIpAddress(), System.currentTimeMillis(), payload);
             }
-        } catch (CDXFormatException e) {
-            throw new RuntimeException(e);
         }
         finally {
             writer.close();
@@ -120,6 +120,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     }
 
     private void processWarcfile(File input, File output) throws IOException {
+        logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterWarc.createWriter(output);
         InputStream is = new FileInputStream(input);
         WarcReader reader = WarcReaderFactory.getReader(is);
@@ -159,16 +160,19 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             valueOrNull(hostIpLine), System.currentTimeMillis(), payloadBytes);
                 }
             }
-        } catch (CDXFormatException e) {
-            throw new RuntimeException(e);
         } finally {
             writer.close();
         }
     }
 
-    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) throws CDXFormatException, FileNotFoundException {
+    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) throws FileNotFoundException {
         String cdxSpec = " CDX A r b m S g V k";
-        CDXFormat cdxFormat = new CDXFormat(cdxSpec);
+        CDXFormat cdxFormat = null;
+        try {
+            cdxFormat = new CDXFormat(cdxSpec);
+        } catch (CDXFormatException e) {
+            throw new RuntimeException(e);
+        }
         String[] payload = new String(cdxPayload).split("\\r\\n|\\n|\\r");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < payload.length; i++) {
@@ -177,7 +181,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             try {
                 captureSearchResult = cdxFormat.parseResult(line);
             } catch (CDXFormatException e) {
-                throw new RuntimeIOException("Cannot parse " + line);
+                throw new RuntimeException("Cannot parse " + line);
             }
             String file = captureSearchResult.getFile();
             long oldOffset = captureSearchResult.getOffset();
@@ -185,8 +189,6 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             captureSearchResult.setOffset(iFileEntry.getNewOffset());
             captureSearchResult.setFile(file + ".gz");
             line = cdxFormat.serializeResult(captureSearchResult);
-
-
             sb.append(line);
             if (i != payload.length -1) {
                 sb.append("\n");
@@ -225,6 +227,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
              String filename = null;
              try {
                  filename = sharedQueue.take();
+                 logger.info("Processing {} with thread {}.", filename, threadNo);
                  processFile(filename);
              } catch (InterruptedException e) {
                  throw new RuntimeException(e);
@@ -233,6 +236,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                  throw new RuntimeException(e);
              }
          }
+        logger.info("Thread {} dying of natural causes.", threadNo);
     }
     public static String valueOrNull(HeaderLine line) {
         if (line == null) {
