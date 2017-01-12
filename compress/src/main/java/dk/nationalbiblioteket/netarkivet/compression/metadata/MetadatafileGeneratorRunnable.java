@@ -69,7 +69,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         if (!inputFile.exists()) {
             throw new NoSuchFileException("No such file: " + inputFile.getAbsolutePath());
         }
-        final Path outputDirPath = Paths.get(properties.getProperty(Util.NMETADATA_DIR));
+        String outputDir = properties.getProperty(Util.NMETADATA_DIR);
+        if (outputDir == null) {
+            outputDir = inputFile.getParentFile().getAbsolutePath();
+        }
+        final Path outputDirPath = Paths.get(outputDir);
         Files.createDirectories(outputDirPath);
         Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
         //Files.createFile(outputFilePath);
