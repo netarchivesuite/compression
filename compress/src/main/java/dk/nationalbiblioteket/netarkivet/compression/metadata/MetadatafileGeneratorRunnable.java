@@ -77,9 +77,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         Files.createDirectories(outputDirPath);
         Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
         //Files.createFile(outputFilePath);
-        if (filename.endsWith(".warc")) {
+        if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
              processWarcfile(inputFile, outputFilePath.toFile());
-        } else if (filename.endsWith(".arc")) {
+        } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
              processArcfile(inputFile, outputFilePath.toFile());
         } else {
             throw new WeirdFileException("Input metadata file is neither arc nor ward: " + filename);
