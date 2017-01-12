@@ -91,14 +91,12 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     }
 
     private File doCompression(File inputFile) throws WeirdFileException {
-        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
-        tmpdir.mkdirs();
         CompressOptions compressOptions = new CompressOptions();
-        compressOptions.dstPath = tmpdir;
+        compressOptions.dstPath = inputFile.getParentFile();
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = 9;
         this.compressFile(inputFile, compressOptions);
-        File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
+        File gzipFile = new File (inputFile.getParentFile(), inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
             throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
         } else {
