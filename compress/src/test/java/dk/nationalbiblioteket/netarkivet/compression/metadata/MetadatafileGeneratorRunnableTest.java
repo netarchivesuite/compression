@@ -1,8 +1,9 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import org.archive.io.arc.ARCReaderFactory;
+import org.archive.io.warc.WARCReaderFactory;
 import org.testng.annotations.Test;
-import org.testng.reporters.jq.INavigatorPanel;
 
 import java.io.File;
 import java.util.Properties;
@@ -23,7 +24,7 @@ public class MetadatafileGeneratorRunnableTest {
     public void testProcessWarcFile() throws Exception {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, IFILE_DIR);
-        Util.properties.put(Util.DEPTH, Depth);
+        Util.properties.put(Util.IFILE_DEPTH, Depth);
         Util.properties.put(Util.NMETADATA_DIR, NMETADATA_DIR);
         Util.properties.put(Util.CACHE_SIZE, "1000");
         Util.properties.put(Util.METADATA_GENERATION, "4");
@@ -33,13 +34,14 @@ public class MetadatafileGeneratorRunnableTest {
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.warc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
+        assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
     }
 
     @Test
     public void testProcessArcFile() throws Exception {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, IFILE_DIR);
-        Util.properties.put(Util.DEPTH, Depth);
+        Util.properties.put(Util.IFILE_DEPTH, Depth);
         Util.properties.put(Util.NMETADATA_DIR, NMETADATA_DIR);
         Util.properties.put(Util.CACHE_SIZE, "1000");
         Util.properties.put(Util.METADATA_GENERATION, "4");
@@ -49,6 +51,9 @@ public class MetadatafileGeneratorRunnableTest {
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
+        assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
     }
+
+
 
 }

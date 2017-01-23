@@ -15,7 +15,7 @@ public class IFileCacheImplTest {
     public void testGetIFileEntry() throws Exception {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, "src/test/data/ifiles");
-        Util.properties.put(Util.DEPTH, "2");
+        Util.properties.put(Util.IFILE_DEPTH, "2");
         Util.properties.put(Util.TEMP_DIR, "/tmp");
         Util.properties.put(Util.CACHE_SIZE, "2");
         IFileCacheImpl cache = IFileCacheImpl.getIFileCacheImpl();

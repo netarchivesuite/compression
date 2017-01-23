@@ -1,6 +1,9 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
+import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.PrecompressionRunnable;
+import dk.netarkivet.common.utils.Settings;
+import dk.netarkivet.harvester.HarvesterSettings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,13 +31,14 @@ public class MetadatafileGenerator {
     }
 
     private void startConsumers() {
-        int numberConsumers = 10;
+        int numberConsumers = Integer.parseInt(Util.getProperties().getProperty(Util.THREADS));
         for (int i = 0; i < numberConsumers; i++) {
             new Thread(new MetadatafileGeneratorRunnable(sharedQueue, i)).start();
         }
     }
 
     public static void main(String[] args) throws IOException {
+
         MetadatafileGenerator metadatafileGenerator = new MetadatafileGenerator();
         String inputFile = args[0];
         metadatafileGenerator.fillQueue(inputFile);

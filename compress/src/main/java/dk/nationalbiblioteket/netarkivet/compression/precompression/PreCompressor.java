@@ -13,7 +13,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  */
 public class PreCompressor {
 
-    public static final String[] REQUIRED_PROPS = new String[] {Util.LOG, Util.IFILE_ROOT_DIR, Util.MD5_FILEPATH, Util.DEPTH, Util.TEMP_DIR};
+    public static final String[] REQUIRED_PROPS = new String[] {Util.LOG, Util.IFILE_ROOT_DIR, Util.MD5_FILEPATH, Util.IFILE_DEPTH, Util.TEMP_DIR};
 
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
 
@@ -22,7 +22,7 @@ public class PreCompressor {
     }
 
     private void startConsumers() {
-        int numberConsumers = 10;
+        int numberConsumers = Integer.parseInt(Util.getProperties().getProperty(Util.THREADS));
         for (int i = 0; i < numberConsumers; i++) {
             new Thread(new PrecompressionRunnable(sharedQueue, i)).start();
         }

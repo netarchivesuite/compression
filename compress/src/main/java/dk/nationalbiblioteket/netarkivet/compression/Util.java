@@ -3,7 +3,6 @@ package dk.nationalbiblioteket.netarkivet.compression;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,7 +14,8 @@ public class Util {
 
     public static final String CONFIG = "config";
     public static final String IFILE_ROOT_DIR = "IFILE_ROOT_DIR";
-    public static final String DEPTH = "DEPTH";
+    public static final String CDX_ROOT_DIR = "CDX_ROOT_DIR";
+    public static final String IFILE_DEPTH = "IFILE_DEPTH";
     public static final String TEMP_DIR = "TEMP_DIR";
     public static final String NMETADATA_DIR = "NMETADATA_DIR";
     public static final String METADATA_DIR = "METADATA_DIR";
@@ -23,20 +23,33 @@ public class Util {
     public static final String METADATA_GENERATION = "METADATA_GENERATION";
     public static final String MD5_FILEPATH = "MD5_FILEPATH";
     public static final String LOG = "LOG";
+    public static final String CDX_DEPTH = "CDX_DEPTH";
+    public static final String THREADS = "THREADS";
+
     private static final Pattern METADATA_NAME_PATTERN = Pattern.compile("([0-9]*-metadata-)([0-9]+)(.(w)?arc)(.gz)?");
+
+
     public static Properties properties;
 
 
     public static File getIFileSubdir(String uncompressedFileName, boolean create) {
+        return getSubdir(properties.getProperty(IFILE_ROOT_DIR), uncompressedFileName, Integer.parseInt(properties.getProperty(IFILE_DEPTH)), create);
+    }
+
+    public static File getCDXSubdir(String uncompressedFileName, boolean create) {
+        return getSubdir(properties.getProperty(CDX_ROOT_DIR), uncompressedFileName, Integer.parseInt(properties.getProperty(CDX_DEPTH)), create);
+    }
+
+
+    private static File getSubdir(String rootDir, String uncompressedFileName, int depth,  boolean create) {
         getProperties();
-        String outputRootDirName = properties.getProperty(IFILE_ROOT_DIR);
         String inputFilePrefix = uncompressedFileName.split("-")[0];
-        int depth = Integer.parseInt(properties.getProperty(DEPTH));
         while ( inputFilePrefix.length() < depth )  {
             inputFilePrefix = '0' + inputFilePrefix;
         }
         inputFilePrefix = inputFilePrefix.substring(0, depth);
-        File subdir = new File(outputRootDirName);
+        File subdir = new File(rootDir);
+        subdir.mkdirs();
         for (char subdirName: inputFilePrefix.toCharArray()) {
             subdir = new File(subdir, String.valueOf(subdirName));
             if (create) {

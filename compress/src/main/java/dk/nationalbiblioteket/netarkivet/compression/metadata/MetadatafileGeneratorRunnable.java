@@ -48,6 +48,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     private static boolean isDead = false;
     Logger logger = LoggerFactory.getLogger(MetadatafileGeneratorRunnable.class);
     public MetadatafileGeneratorRunnable(BlockingQueue<String> sharedQueue, int threadNo) {
+        System.setProperty("settings.harvester.harvesting.metadata.compression", "true");
         this.sharedQueue = sharedQueue;
         this.threadNo = threadNo;
     }

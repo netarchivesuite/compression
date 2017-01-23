@@ -1,5 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.compression;
 
+import dk.nationalbiblioteket.netarkivet.compression.Util;
 import org.jwat.tools.tasks.compress.CompressFile;
 
 import java.io.IOException;
@@ -22,7 +23,7 @@ public class Compressor{
     }
 
     private void startConsumers() {
-        int numberConsumers = 10;
+        int numberConsumers = Integer.parseInt(Util.getProperties().getProperty(Util.THREADS));
         for (int i = 0; i < numberConsumers; i++) {
             new Thread(new CompressorRunnable(sharedQueue, i)).start();
         }

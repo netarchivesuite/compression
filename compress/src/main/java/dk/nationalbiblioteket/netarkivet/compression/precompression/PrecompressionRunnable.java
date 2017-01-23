@@ -8,6 +8,7 @@ import dk.nationalbiblioteket.netarkivet.compression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import java.util.logging.Level;
 import org.archive.util.iterator.CloseableIterator;
@@ -80,28 +81,29 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
     public void precompress(String filename) throws FatalException, WeirdFileException {
-        String outputRootDirName = Util.getProperties().getProperty(Util.IFILE_ROOT_DIR);
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
             return;
         }
-        File subdir = Util.getIFileSubdir(inputFile.getName(), true);
-        File outputFile = new File(subdir, inputFile.getName() + ".ifile.cdx");
-        if (outputFile.exists()) {
+        File iFileSubdir = Util.getIFileSubdir(inputFile.getName(), true);
+        File cdxSubdir = Util.getCDXSubdir(inputFile.getName(), true);
+        File iFile = new File(iFileSubdir, inputFile.getName() + ".ifile.cdx");
+        if (iFile.exists()) {
             //already done this one
             return;
         }
         File gzipFile = doCompression(inputFile);
         checkConsistency(inputFile, gzipFile);
+        File cdxFile = new File(cdxSubdir, gzipFile.getName() + ".cdx");
         if (!gzipFile.getName().contains("metadata")) {
-            writeiFile(inputFile, gzipFile, outputFile);
+            writeiFile(inputFile, gzipFile, iFile, cdxFile);
         } else {
             try {
                 //Create an empty file here as a placeholder to show that this input file has been processed.
-                outputFile.createNewFile();
+                iFile.createNewFile();
             } catch (IOException e) {
-                throw new FatalException("Could not create ifile " + outputFile.getAbsolutePath());
+                throw new FatalException("Could not create ifile " + iFile.getAbsolutePath());
             }
         }
         deleteFile(gzipFile, true);
@@ -201,6 +203,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
 
     private static synchronized void writeCompressionLog(String message) throws FatalException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
+        (new File(compressionLogPath)).getParentFile().mkdirs();
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
             writer.println(message);
         } catch (IOException e) {
@@ -209,11 +212,10 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
 
-    private void writeiFile(File uncompressedFile, File compressedFile, File outputFile) throws FatalException, WeirdFileException {
+    private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws FatalException, WeirdFileException {
         CloseableIterator<CaptureSearchResult> ocdxIt;
         CloseableIterator<CaptureSearchResult> ncdxIt;
-        File ncdxFile = new File(outputFile.getParentFile(), compressedFile.getName() + ".cdx");
-        String cdxSpec = " CDX N b a m s k r M V g";
+        String cdxSpec = " CDX A b a m s k r V g";
         SearchResultToCDXFormatAdapter adapter;
         try {
             adapter = new SearchResultToCDXFormatAdapter(new CDXFormat(cdxSpec));
@@ -231,8 +233,8 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new WeirdFileException("Problem reading " + compressedFile.getAbsolutePath(), e);
         }
         try (
-                PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(outputFile, true)));
-                PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(ncdxFile, true)))
+                PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
+                PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(cdxFile, true)))
         ) {
             cdxWriter.println(cdxSpec);
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
