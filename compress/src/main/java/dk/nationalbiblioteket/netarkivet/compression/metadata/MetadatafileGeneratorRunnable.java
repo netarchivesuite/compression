@@ -103,7 +103,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 }
                 String url = recordBase.getUrlStr();
                 if (url.contains("crawl.log")) {
-                    String dedupURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
+                    String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
                     byte[] dedupPayload = getDedupPayload(payload);
                     writer.write(dedupURI, "text/plain", recordBase.getIpAddress(),
                     System.currentTimeMillis(), dedupPayload);
@@ -149,7 +149,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     //the cdx records we alter the record.
                     if (uriLine.value.contains("crawl.log")) {
                         //Ideally would like to include harvestid, harvestnum, jobid in following uri.
-                        String dedupURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
+                        String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
                         byte[] dedupPayload = getDedupPayload(payloadBytes);
                         writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload);
                     } else if (uriLine.value.contains("index/cdx")) {
@@ -210,10 +210,13 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     String filename = split[8];
                     String offset = split[7];
                     IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
-                    split[8] = filename + ".gz";
-                    split[7] = "" + iFileEntry.getNewOffset();
-                    output.append(StringUtils.join(split, ' '));
-                    output.append("\n");
+                    output.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append("\n");
+
+
+                    //split[8] = filename + ".gz";
+                    //split[7] = "" + iFileEntry.getNewOffset();
+                    //output.append(StringUtils.join(split, ' '));
+                    //output.append("\n");
                 }
             }
         }
