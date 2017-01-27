@@ -240,7 +240,9 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
                 CaptureSearchResult oResult = ocdxIt.next();
                 CaptureSearchResult nResult = ncdxIt.next();
-                ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                if (!oResult.getMimeType().matches("^text/.*")) {
+                    ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                }
                 cdxWriter.println(adapter.adapt(nResult));
             }
         } catch (IOException e) {
