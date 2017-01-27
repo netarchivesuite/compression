@@ -11,6 +11,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import java.util.logging.Level;
+
+import org.apache.commons.io.output.NullOutputStream;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
@@ -158,8 +160,8 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             while (gzipFile.exists() && tries < maxTries) {
                 try {
                     Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
-                    IOUtils.copy(p.getInputStream(), System.out);
-                    IOUtils.copy(p.getErrorStream(), System.err);
+                    IOUtils.copy(p.getInputStream(), new NullOutputStream());
+                    IOUtils.copy(p.getErrorStream(), new NullOutputStream());
                     tries ++;
                     if (gzipFile.exists()) {
                         try {
