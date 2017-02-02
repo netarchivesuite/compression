@@ -21,6 +21,7 @@ import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
+import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
@@ -59,7 +60,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     public static final String WARC_GZ_EXTENSION = ".warc.gz";
     private ArcIndexer arcIndexer = new ArcIndexer();
     private WarcIndexer warcIndexer = new WarcIndexer();
-    private UrlCanonicalizer canonicalizer = new IdentityUrlCanonicalizer();
+    private UrlCanonicalizer canonicalizer = new AggressiveUrlCanonicalizer();
 
     private CloseableIterator<CaptureSearchResult> indexFile(String pathOrUrl) throws IOException {
         CloseableIterator itr = null;
@@ -92,7 +93,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         File cdxSubdir = Util.getCDXSubdir(inputFile.getName(), true);
         File iFile = new File(iFileSubdir, inputFile.getName() + ".ifile.cdx");
         if (iFile.exists()) {
-            //already done this one
+            System.out.println("File " + iFile.getAbsolutePath() + " already exists so not reprocessing.");
             return;
         }
         File gzipFile = doCompression(inputFile);

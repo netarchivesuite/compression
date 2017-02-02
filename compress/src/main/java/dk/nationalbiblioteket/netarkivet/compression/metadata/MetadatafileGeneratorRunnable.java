@@ -6,6 +6,7 @@ import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import dk.netarkivet.wayback.batch.DeduplicateToCDXAdapter;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.archive.util.io.RuntimeIOException;
@@ -78,17 +79,20 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
         final Path outputDirPath = Paths.get(outputDir);
         Files.createDirectories(outputDirPath);
+        File cdxDir = Util.getCDXSubdir(inputFile.getName(), true);
         Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
         if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
-             processWarcfile(inputFile, outputFilePath.toFile());
+             processWarcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
-             processArcfile(inputFile, outputFilePath.toFile());
+             processArcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else {
             throw new WeirdFileException("Input metadata file is neither arc nor ward: " + filename);
         }
+        inputFile.renameTo(new File(inputFile.getParentFile(), inputFile.getName().replace("metadata", "oldmetadata")));
+
     }
 
-    private void processArcfile(File input, File output) throws IOException {
+    private void processArcfile(File input, File output, File cdxDir) throws IOException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterArc.createWriter(output);
         InputStream is = new FileInputStream(input);
@@ -104,9 +108,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 String url = recordBase.getUrlStr();
                 if (url.contains("crawl.log")) {
                     String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
-                    byte[] dedupPayload = getDedupPayload(payload);
+                    byte[][] dedupPayload = getDedupPayload(payload);
                     writer.write(dedupURI, "text/plain", recordBase.getIpAddress(),
-                    System.currentTimeMillis(), dedupPayload);
+                    System.currentTimeMillis(), dedupPayload[0]);
+                    String dedupCdxURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
+                    writer.write(dedupCdxURI, "text/plain", recordBase.getIpAddress(), System.currentTimeMillis(), dedupPayload[1]);
+                    if (dedupPayload[1].length > 0) {
+                        FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
+                    }
                 } else if (url.contains("index/cdx")) {
                     payload = getUpdatedCdxPayload(payload);
                     url = url.replace(".arc", ".arc.gz");
@@ -120,7 +129,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
     }
 
-    private void processWarcfile(File input, File output) throws IOException {
+    private void processWarcfile(File input, File output, File cdxDir) throws IOException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterWarc.createWriter(output);
         InputStream is = new FileInputStream(input);
@@ -150,8 +159,13 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     if (uriLine.value.contains("crawl.log")) {
                         //Ideally would like to include harvestid, harvestnum, jobid in following uri.
                         String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
-                        byte[] dedupPayload = getDedupPayload(payloadBytes);
-                        writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload);
+                        byte[][] dedupPayload = getDedupPayload(payloadBytes);
+                        writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[0]);
+                        String dedupCdxURI = "metadata://crawl/index/dedupcdx?majorversion=0&minorversion=0";
+                        writer.write(dedupCdxURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[1]);
+                        if (dedupPayload[1].length > 0) {
+                            FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
+                        }
                     } else if (uriLine.value.contains("index/cdx")) {
                         uriLine.value = uriLine.value.replace("arc", "arc.gz");
                         payloadBytes = getUpdatedCdxPayload(payloadBytes);
@@ -198,9 +212,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return sb.toString().getBytes();
     }
 
-    private byte[] getDedupPayload(byte[] crawllogPayload) throws FileNotFoundException {
+    private byte[][] getDedupPayload(byte[] crawllogPayload) throws FileNotFoundException {
         String[] input = new String(crawllogPayload).split("\\r\\n|\\n|\\r");
-        StringBuffer output = new StringBuffer();
+        StringBuffer migrationOutput = new StringBuffer();
+        StringBuffer cdxOutput = new StringBuffer();
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
         for (String line: input) {
             if (line.contains("duplicate:")) {
@@ -210,17 +225,15 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     String filename = split[8];
                     String offset = split[7];
                     IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
-                    output.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append("\n");
-
-
-                    //split[8] = filename + ".gz";
-                    //split[7] = "" + iFileEntry.getNewOffset();
-                    //output.append(StringUtils.join(split, ' '));
-                    //output.append("\n");
+                    migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append("\n");
+                    split[8] = filename + ".gz";
+                    split[7] = "" + iFileEntry.getNewOffset();
+                    cdxOutput.append(StringUtils.join(split, ' '));
+                    cdxOutput.append("\n");
                 }
             }
         }
-        return output.toString().getBytes();
+        return new byte[][] {migrationOutput.toString().getBytes(), cdxOutput.toString().getBytes()};
     }
 
 

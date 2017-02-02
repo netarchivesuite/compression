@@ -37,15 +37,16 @@ import static dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter.*;
  */
 public class Testbed {
 
-    String input_warc = "src/test/data/10-metadata-1.warc";
-    String input_arc = "src/test/data/3-metadata-1.arc";
+    String input_warc = "src/test/data/WORKING/10-metadata-1.warc";
+    String input_arc = "src/test/data/WORKING/3-metadata-1.arc";
     String output_dir_S = "src/test/working";
     File output_dir = new File(output_dir_S);
 
     @BeforeTest
-    public void setUp() throws IOException {
+    public void setUp() throws Exception {
         FileUtils.deleteDirectory(output_dir);
         FileUtils.forceMkdir(output_dir);
+        MetadatafileGeneratorRunnableTest.setup();
     }
 
     @Test
