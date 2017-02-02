@@ -35,6 +35,7 @@ public class MetadatafileGeneratorRunnableTest {
         Util.properties.put(Util.METADATA_GENERATION, "4");
         Util.properties.put(Util.CDX_ROOT_DIR, "cdx");
         Util.properties.put(Util.CDX_DEPTH, "0");
+        Util.properties.put(Util.UPDATED_FILENAME_MD5_FILEPATH, NMETADATA_DIR + "/newchecksums");
         FileUtils.copyDirectory(new File(originals), new File(working));
     }
 

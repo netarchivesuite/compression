@@ -26,7 +26,7 @@ public class PrecompressionRunnableTest {
 
     @org.testng.annotations.AfterMethod
     public void tearDown() throws Exception {
-        cleanup();
+        //cleanup();
     }
 
     private void cleanup() throws IOException {

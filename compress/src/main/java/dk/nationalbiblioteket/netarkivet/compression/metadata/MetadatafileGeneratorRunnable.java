@@ -1,11 +1,13 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
+import dk.nationalbiblioteket.netarkivet.compression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
 import dk.netarkivet.wayback.batch.DeduplicateToCDXAdapter;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -26,11 +28,14 @@ import org.jwat.warc.WarcRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -61,7 +66,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
      * is relative to current working dir.
      * @param filename
      */
-    void processFile(String filename) throws IOException, WeirdFileException {
+    void processFile(String filename) throws IOException, WeirdFileException, FatalException {
         Properties properties = Util.getProperties();
         String inputPath = properties.getProperty(Util.METADATA_DIR);
         File inputFile;
@@ -88,8 +93,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } else {
             throw new WeirdFileException("Input metadata file is neither arc nor ward: " + filename);
         }
-        inputFile.renameTo(new File(inputFile.getParentFile(), inputFile.getName().replace("metadata", "oldmetadata")));
-
+        final String replacementFilename = inputFile.getName().replace("metadata", "oldmetadata");
+        final File dest = new File(inputFile.getParentFile(), replacementFilename);
+        inputFile.renameTo(dest);
+        writeMD5UpdatedFilename(dest);
+        writeMD5UpdatedFilename(outputFilePath.toFile());
     }
 
     private void processArcfile(File input, File output, File cdxDir) throws IOException {
@@ -236,7 +244,20 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return new byte[][] {migrationOutput.toString().getBytes(), cdxOutput.toString().getBytes()};
     }
 
-
+    private static synchronized void writeMD5UpdatedFilename(File gzipFile) throws FatalException {
+        String md5;
+        try {
+            md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
+        } catch (IOException e) {
+            throw new FatalException(e);
+        }
+        String md5Filepath = Util.getProperties().getProperty(Util.UPDATED_FILENAME_MD5_FILEPATH);
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
+            writer.println(gzipFile.getName() + "##" + md5);
+        } catch (IOException e) {
+            throw new FatalException(e);
+        }
+    }
 
     @Override
     public void run() {
@@ -248,7 +269,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                  processFile(filename);
              } catch (InterruptedException e) {
                  throw new RuntimeException(e);
-             } catch (WeirdFileException | IOException e) {
+             } catch (FatalException | WeirdFileException | IOException e) {
                  isDead = true;
                  throw new RuntimeException(e);
              }
