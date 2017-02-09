@@ -55,7 +55,8 @@ public class CompressorRunnable extends CompressFile implements Runnable {
              if (gzipFile.getName().contains("metadata")) {
                  String newName = gzipFile.getName().replace("metadata", "oldmetadata");
                  File newFile = new File(gzipFile.getParentFile(), newName);
-                 Files.move(gzipFile.toPath(), newFile.toPath());
+                 //Files.move(gzipFile.toPath(), newFile.toPath());
+                 Runtime.getRuntime().exec("cmd \\c rename " + gzipFile.getAbsolutePath() + " " + newFile.getAbsolutePath());
              }
         }
         inputFile.setWritable(true);
