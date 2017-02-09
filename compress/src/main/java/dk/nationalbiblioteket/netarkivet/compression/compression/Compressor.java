@@ -3,6 +3,7 @@ package dk.nationalbiblioteket.netarkivet.compression.compression;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import org.jwat.tools.tasks.compress.CompressFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -30,7 +31,13 @@ public class Compressor{
     }
 
     public static void main(String[] args) throws IOException {
-            Compressor compressor = new Compressor();
+        String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
+        File md5File = new File(md5Filepath);
+        if (!md5File.exists() || md5File.isDirectory()) {
+            System.out.println("No such file " + md5File.getAbsolutePath());
+            System.exit(1);
+        }
+        Compressor compressor = new Compressor();
             String inputFile = args[0];
             compressor.fillQueue(inputFile);
             compressor.startConsumers();
