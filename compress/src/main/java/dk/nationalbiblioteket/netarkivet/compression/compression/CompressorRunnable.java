@@ -50,6 +50,13 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
         File gzipFile = doCompression(inputFile);
         validateMD5(gzipFile);
+        if (System.getProperty("os.name").contains("Windows")){
+             if (gzipFile.getName().contains("metadata")) {
+                 String newName = gzipFile.getName().replace("metadata", "oldmetadata");
+                 File newFile = new File(gzipFile.getParentFile(), newName);
+                 gzipFile.renameTo(newFile);
+             }
+        }
         inputFile.setWritable(true);
         System.gc();
         inputFile.delete();
