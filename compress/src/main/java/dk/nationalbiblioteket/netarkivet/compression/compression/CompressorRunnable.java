@@ -112,7 +112,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
             try {
                 filename = sharedQueue.take();
                 compress(filename);
-                writeCompressionLog("Compressed " + filename);
+                writeCompressionLog("Compressed " + filename + " to " + filename + ".gz");
             } catch (Exception e) {
                 isDead = true;
                 writeCompressionLog("Failed to compress " + filename + " " + e.getMessage());
