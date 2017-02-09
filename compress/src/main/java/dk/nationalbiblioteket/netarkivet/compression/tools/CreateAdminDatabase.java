@@ -5,6 +5,8 @@ import dk.netarkivet.archive.arcrepositoryadmin.AdminFactory;
 import dk.netarkivet.common.distribute.Channels;
 import dk.netarkivet.common.distribute.arcrepository.Replica;
 import dk.netarkivet.common.distribute.arcrepository.ReplicaStoreState;
+import dk.netarkivet.common.exceptions.ArgumentNotValid;
+import dk.netarkivet.common.exceptions.UnknownID;
 import dk.netarkivet.common.utils.KeyValuePair;
 import dk.netarkivet.common.utils.batch.ChecksumJob;
 import org.apache.commons.io.FileUtils;
@@ -26,9 +28,17 @@ public class CreateAdminDatabase {
             KeyValuePair<String, String> parsedLine =  ChecksumJob.parseLine(line);
             String filename = parsedLine.getKey();
             String checksum = parsedLine.getValue();
-            admin.addEntry(filename, null, checksum);
+            try {
+                admin.addEntry(filename, null, checksum);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             for (Replica replica: replicas) {
-                admin.setState(filename, Channels.retrieveReplicaChannelNameFromReplicaId(replica.getId()), ReplicaStoreState.UPLOAD_COMPLETED);
+                try {
+                    admin.setState(filename, Channels.retrieveReplicaChannelNameFromReplicaId(replica.getId()), ReplicaStoreState.UPLOAD_COMPLETED);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
