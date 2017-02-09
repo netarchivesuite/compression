@@ -16,6 +16,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -54,9 +55,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
              if (gzipFile.getName().contains("metadata")) {
                  String newName = gzipFile.getName().replace("metadata", "oldmetadata");
                  File newFile = new File(gzipFile.getParentFile(), newName);
-                 if (!gzipFile.renameTo(newFile)) {
-                     System.out.println("Failed to rename " + gzipFile.getName()  + " to " + newName);
-                 }
+                 Files.move(gzipFile.toPath(), newFile.toPath());
              }
         }
         inputFile.setWritable(true);
