@@ -1,7 +1,9 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -18,7 +20,7 @@ public class PreCompressor {
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
 
     private void fillQueue(String filelistFilename) throws IOException {
-          sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
+        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
     }
 
     private void startConsumers() {
@@ -29,10 +31,15 @@ public class PreCompressor {
     }
 
     public static void main(String[] args) throws IOException {
-            PreCompressor preCompressor = new PreCompressor();
-            String inputFile = args[0];
-            preCompressor.fillQueue(inputFile);
-            preCompressor.startConsumers();
+        String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
+        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
+        tmpdir.mkdirs();
+        FileUtils.cleanDirectory(tmpdir);
+        (new File(md5Filepath)).getParentFile().mkdirs();
+        PreCompressor preCompressor = new PreCompressor();
+        String inputFile = args[0];
+        preCompressor.fillQueue(inputFile);
+        preCompressor.startConsumers();
     }
 
 }
