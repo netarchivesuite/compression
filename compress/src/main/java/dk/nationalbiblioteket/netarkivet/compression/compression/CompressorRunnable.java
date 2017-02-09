@@ -57,7 +57,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  File newFile = new File(gzipFile.getParentFile(), newName);
                  writeRename(gzipFile, newFile);
                  //Files.move(gzipFile.toPath(), newFile.toPath());
-                 //Runtime.getRuntime().exec("cmd \\c rename " + gzipFile.getAbsolutePath() + " " + newFile.getAbsolutePath());
+                 Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
         }
         inputFile.setWritable(true);
@@ -71,7 +71,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     private static synchronized void writeRename(File oldFile, File newFile) throws FatalException {
            File renameFile = new File("rename.bat");
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(renameFile, true)))) {
-            writer.println("rename " + oldFile.getAbsolutePath() + " " + newFile.getAbsolutePath());
+            writer.println("rename \"" + oldFile.getAbsolutePath() + "\" " + newFile.getName());
         } catch (IOException e) {
             throw new FatalException(e);
         }
