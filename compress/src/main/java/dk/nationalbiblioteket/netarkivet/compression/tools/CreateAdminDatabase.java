@@ -29,12 +29,14 @@ public class CreateAdminDatabase {
             String filename = parsedLine.getKey();
             String checksum = parsedLine.getValue();
             try {
+                System.out.println("Adding " + line);
                 admin.addEntry(filename, null, checksum);
             } catch (Exception e) {
                 e.printStackTrace();
             }
             for (Replica replica: replicas) {
                 try {
+                    System.out.printf("Setting state for " + filename + " for " + replica.getName());
                     admin.setState(filename, Channels.retrieveReplicaChannelNameFromReplicaId(replica.getId()), ReplicaStoreState.UPLOAD_COMPLETED);
                 } catch (Exception e) {
                     e.printStackTrace();
