@@ -8,6 +8,27 @@
     <artifactId>compression</artifactId>
     <version>1.0-SNAPSHOT</version>
 
+    <scm>
+        <url>https://github.com/netarchivesuite/compression</url>
+        <connection>scm:git:https://github.com/netarchivesuite/compression.git</connection>
+        <developerConnection>scm:git:git@github.com:netarchivesuite/compression.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>sbforge-nexus</id>
+            <name>SBForge Nexus Repo manager</name>
+            <url>https://sbforge.org/nexus/content/repositories/releases</url>
+        </repository>
+
+        <snapshotRepository>
+            <id>sbforge-nexus</id>
+            <name>SBForge Nexus Repo manager</name>
+            <url>https://sbforge.org/nexus/content/repositories/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 
     <repositories>
         <repository>
