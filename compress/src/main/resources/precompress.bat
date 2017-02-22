@@ -1,7 +1,5 @@
 Set PACKAGE=dk.nationalbiblioteket.netarkivet.compression.precompression
-
 Set CLASS=PreCompressor
-
-
-PUSHD "%~dp0" >NUL && SET root=%CD% && POPD >NUL
-java -classpath "%ROOT%\../lib/*" -Dconfig="%ROOT%\../config/precompress.conf" %PACKAGE%.%CLASS% %1
+Set JARDIR=%~dp0\..\lib
+Set CONFDIR=%~dp0\..\config
+java -classpath "%JARDIR%/*" -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %1
