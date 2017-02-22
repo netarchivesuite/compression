@@ -118,7 +118,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         CompressOptions compressOptions = new CompressOptions();
         compressOptions.dstPath = tmpdir;
         compressOptions.bTwopass = true;
-        compressOptions.compressionLevel = 9;
+        compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
         this.compressFile(inputFile, compressOptions);
         File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
