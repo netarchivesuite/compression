@@ -10,8 +10,11 @@ import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+
+import java.util.Arrays;
 import java.util.logging.Level;
 
+import org.apache.commons.io.LineIterator;
 import org.apache.commons.io.output.NullOutputStream;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
@@ -23,6 +26,8 @@ import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
+import org.jwat.tools.tasks.cdx.CDXOptions;
+import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 
@@ -216,46 +221,71 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
 
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws FatalException, WeirdFileException {
-        CloseableIterator<CaptureSearchResult> ocdxIt;
-        CloseableIterator<CaptureSearchResult> ncdxIt;
-        String cdxSpec = " CDX A b a m s k r V g";
+        File uncompressedJwatCdx = doJwatIndexing(uncompressedFile);
+        File compressedJwatCdx = doJwatIndexing(compressedFile);
+        LineIterator ocdxIt = null;
+        try {
+            ocdxIt = FileUtils.lineIterator(uncompressedJwatCdx);
+        } catch (IOException e) {
+            throw new FatalException("Could not process " + uncompressedJwatCdx.getAbsolutePath());
+        }
+        LineIterator ncdxIt = null;
+        try {
+            ncdxIt = FileUtils.lineIterator(compressedJwatCdx);
+        } catch (IOException e) {
+            throw new FatalException("Could not process " + compressedJwatCdx);
+        }
+        String waybackCdxSpec = " CDX N b a m s k r V g";
         SearchResultToCDXFormatAdapter adapter;
         try {
-            adapter = new SearchResultToCDXFormatAdapter(new CDXFormat(cdxSpec));
+            adapter = new SearchResultToCDXFormatAdapter(new CDXFormat(waybackCdxSpec));
         } catch (CDXFormatException e) {
             throw new FatalException(e);
         }
-        try {
-            ocdxIt = indexFile(uncompressedFile.getAbsolutePath());
-        } catch (IOException e) {
-            throw new WeirdFileException("Problem reading " + uncompressedFile.getAbsolutePath(), e);
-        }
-        try {
-            ncdxIt = indexFile(compressedFile.getAbsolutePath());
-        } catch (IOException e) {
-            throw new WeirdFileException("Problem reading " + compressedFile.getAbsolutePath(), e);
-        }
+        CDXFormat cdxFormat = null;
         try (
                 PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
                 PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(cdxFile, true)))
         ) {
-            cdxWriter.println(cdxSpec);
+            cdxWriter.println(waybackCdxSpec);
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
-                CaptureSearchResult oResult = ocdxIt.next();
-                CaptureSearchResult nResult = ncdxIt.next();
-                ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
-                cdxWriter.println(adapter.adapt(nResult));
+                String ocdxLine = ocdxIt.nextLine();
+                String ncdxLine = ncdxIt.nextLine();
+                if (ocdxLine.contains("CDX") && cdxFormat == null) {
+                    try {
+                        cdxFormat = new CDXFormat(ocdxLine);
+                    } catch (CDXFormatException e) {
+                        throw new FatalException("Unparseable cdxspec " + ocdxLine, e);
+                    }
+                } else {
+                    CaptureSearchResult oResult = cdxFormat.parseResult(ocdxLine);
+                    CaptureSearchResult nResult = cdxFormat.parseResult(ncdxLine);
+                    ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
+                    cdxWriter.println(adapter.adapt(nResult));
+                }
             }
-        } catch (IOException e) {
+        } catch (IOException | NullPointerException |CDXFormatException e) {
             throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
         } finally {
             try {
                 ocdxIt.close();
                 ncdxIt.close();
-            } catch (IOException e) {
+                uncompressedJwatCdx.delete();
+                compressedJwatCdx.delete();
+            } catch (Exception e) {
                 throw new FatalException(e);
             }
         }
+    }
+
+    private File doJwatIndexing(File uncompressedFile) {
+        File jwatCdx = new File(new File(Util.getProperties().getProperty(Util.TEMP_DIR)), uncompressedFile.getName() + ".jwat.cdx");
+        CDXOptions cdxOptions = new CDXOptions();
+        cdxOptions.filesList = Arrays.asList(uncompressedFile.getAbsolutePath());
+        cdxOptions.outputFile = jwatCdx;
+        CDXTask cdxTask = new CDXTask();
+        cdxTask.runtask(cdxOptions);
+        return jwatCdx;
     }
 
     public void run() {
