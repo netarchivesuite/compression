@@ -13,7 +13,7 @@ public class CdxTest extends CDXFile {
 
     @org.testng.annotations.Test
     public void testCdxGen() {
-        File input = new File("/home/csr/projects/jwat-tools/target/jwat/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc");
+        File input = new File("src/test/data/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc");
         CDXFile cdxFile = new CDXFile();
         cdxFile.processFile(input);
 

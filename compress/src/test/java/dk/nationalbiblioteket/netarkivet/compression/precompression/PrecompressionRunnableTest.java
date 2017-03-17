@@ -53,7 +53,7 @@ public class PrecompressionRunnableTest {
         assertTrue(f1.exists(), f1.getAbsolutePath());
     }
 
-/*    @org.testng.annotations.Test
+   @org.testng.annotations.Test
     public void testPrecompressArc() throws Exception {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
@@ -65,10 +65,24 @@ public class PrecompressionRunnableTest {
         Util.properties.put(Util.THREADS, "10");
         Util.properties.put(Util.LOG, "output/log");
         PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
-        consumer.precompress("/home/csr/projects/jwat-tools/target/jwat/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc");
-    }*/
+        consumer.precompress("src/test/data/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc");
+    }
 
 
+    @org.testng.annotations.Test
+       public void testPrecompressWarc() throws Exception {
+           Util.properties = new Properties();
+           Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
+           Util.properties.put(Util.CDX_ROOT_DIR, "cdxes");
+           Util.properties.put(Util.IFILE_DEPTH, "4");
+           Util.properties.put(Util.CDX_DEPTH, "0");
+           Util.properties.put(Util.MD5_FILEPATH,   "output/checksum_CS.md5");
+           Util.properties.put(Util.TEMP_DIR, "output");
+           Util.properties.put(Util.THREADS, "10");
+           Util.properties.put(Util.LOG, "output/log");
+           PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
+           consumer.precompress("/home/csr/temp/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc");
+       }
 
 
 }
