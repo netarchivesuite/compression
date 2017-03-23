@@ -12,6 +12,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 
 import org.apache.commons.io.LineIterator;
@@ -26,6 +28,11 @@ import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
+import org.jwat.arc.ArcDateParser;
+import org.jwat.common.Uri;
+import org.jwat.common.UriProfile;
+import org.jwat.tools.tasks.cdx.CDXEntry;
+import org.jwat.tools.tasks.cdx.CDXFile;
 import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
@@ -219,73 +226,39 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
+    class CDXFileExt extends CDXFile {
+        List<CDXEntry> getEntries(){
+            return entries;
+        }
+    }
+
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws FatalException, WeirdFileException {
-        File uncompressedJwatCdx = doJwatIndexing(uncompressedFile);
-        File compressedJwatCdx = doJwatIndexing(compressedFile);
-        LineIterator ocdxIt = null;
-        try {
-            ocdxIt = FileUtils.lineIterator(uncompressedJwatCdx);
-        } catch (IOException e) {
-            throw new FatalException("Could not process " + uncompressedJwatCdx.getAbsolutePath());
-        }
-        LineIterator ncdxIt = null;
-        try {
-            ncdxIt = FileUtils.lineIterator(compressedJwatCdx);
-        } catch (IOException e) {
-            throw new FatalException("Could not process " + compressedJwatCdx);
-        }
+        CDXFileExt uncompressedCDXFile = new CDXFileExt();
+        uncompressedCDXFile.processFile(uncompressedFile);
+        List<CDXEntry> uncompressedEntries = uncompressedCDXFile.getEntries();
+        CDXFileExt compressedCDXFile = new CDXFileExt();
+        compressedCDXFile.processFile(compressedFile);
+        List<CDXEntry> compressedEntries = compressedCDXFile.getEntries();
+        Iterator<CDXEntry> ocdxIt = uncompressedEntries.iterator();
+        Iterator<CDXEntry> ncdxIt = compressedEntries.iterator();
         String waybackCdxSpec = " CDX N b a m s k r V g";
-        SearchResultToCDXFormatAdapter adapter;
-        try {
-            adapter = new SearchResultToCDXFormatAdapter(new CDXFormat(waybackCdxSpec));
-        } catch (CDXFormatException e) {
-            throw new FatalException(e);
-        }
-        CDXFormat cdxFormat = null;
         try (
                 PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
                 PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(cdxFile, true)))
         ) {
             cdxWriter.println(waybackCdxSpec);
             while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
-                String ocdxLine = ocdxIt.nextLine();
-                String ncdxLine = ncdxIt.nextLine();
-                if (ocdxLine.contains("CDX") && cdxFormat == null) {
-                    try {
-                        cdxFormat = new CDXFormat(ocdxLine);
-                    } catch (CDXFormatException e) {
-                        throw new FatalException("Unparseable cdxspec " + ocdxLine, e);
-                    }
-                } else {
-                    CaptureSearchResult oResult = cdxFormat.parseResult(ocdxLine);
-                    CaptureSearchResult nResult = cdxFormat.parseResult(ncdxLine);
-                    ifileWriter.println(oResult.getOffset() + " " + nResult.getOffset() + " " + oResult.getCaptureTimestamp());
-                    cdxWriter.println(adapter.adapt(nResult));
-                }
+                CDXEntry oEntry = ocdxIt.next();
+                CDXEntry nEntry = ncdxIt.next();
+                ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + oEntry.date.getTime());
+                cdxWriter.println(cdxEntry(nEntry, "NbamskrVg".toCharArray()));
             }
-        } catch (IOException | NullPointerException |CDXFormatException e) {
+        } catch (IOException | NullPointerException e) {
             throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
         } finally {
-            try {
-                ocdxIt.close();
-                ncdxIt.close();
-                uncompressedJwatCdx.delete();
-                compressedJwatCdx.delete();
-            } catch (Exception e) {
-                throw new FatalException(e);
-            }
-        }
-    }
 
-    private File doJwatIndexing(File uncompressedFile) {
-        File jwatCdx = new File(new File(Util.getProperties().getProperty(Util.TEMP_DIR)), uncompressedFile.getName() + ".jwat.cdx");
-        CDXOptions cdxOptions = new CDXOptions();
-        cdxOptions.filesList = Arrays.asList(uncompressedFile.getAbsolutePath());
-        cdxOptions.outputFile = jwatCdx;
-        CDXTask cdxTask = new CDXTask();
-        cdxTask.runtask(cdxOptions);
-        return jwatCdx;
+        }
     }
 
     public void run() {
@@ -316,4 +289,111 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             }
         }
     }
+
+
+    public static String cdxEntry(CDXEntry entry, char[] format) {
+        StringBuilder sb = new StringBuilder();
+        sb.setLength(0);
+        char c;
+        Uri uri;
+        String host;
+        int port;
+        String query;
+        for (int i=0; i<format.length; ++i) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            c = format[i];
+            switch (c) {
+                case 'b':
+                    if (entry.date != null) {
+                        sb.append(ArcDateParser.getDateFormat().format(entry.date));
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'e':
+                    if (entry.ip != null && entry.ip.length() > 0) {
+                        sb.append(entry.ip);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'A':
+                case 'N':
+                    if (entry.url != null && entry.url.length() > 0) {
+                        uri = Uri.create(entry.url, UriProfile.RFC3986_ABS_16BIT_LAX);
+                        StringBuilder cUrl = new StringBuilder();
+                        if ("http".equalsIgnoreCase(uri.getScheme())) {
+                            host = uri.getHost();
+                            port = uri.getPort();
+                            query = uri.getRawQuery();
+                            if (host.startsWith("www.")) {
+                                host = host.substring("www.".length());
+                            }
+                            cUrl.append(host);
+                            if (port != -1 && port != 80) {
+                                cUrl.append(':');
+                                cUrl.append(port);
+                            }
+                            cUrl.append(uri.getRawPath());
+                            if (query != null) {
+                                cUrl.append('?');
+                                cUrl.append(query);
+                            }
+                            sb.append(cUrl.toString().toLowerCase());
+                        } else {
+                            sb.append(entry.url.toLowerCase());
+                        }
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'a':
+                    if (entry.url != null && entry.url.length() > 0) {
+                        sb.append(entry.url);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'm':
+                    if (entry.mimetype != null && entry.mimetype.length() > 0) {
+                        sb.append(entry.mimetype);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 's':
+                    if (entry.responseCode != null && entry.responseCode.length() > 0) {
+                        sb.append(entry.responseCode);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'c':
+                    if (entry.checksum != null && entry.checksum.length() > 0) {
+                        sb.append(entry.checksum);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'v':
+                case 'V':
+                    sb.append(entry.offset);
+                    break;
+                case 'n':
+                    sb.append(entry.length);
+                    break;
+                case 'g':
+                    sb.append(entry.fileName);
+                    break;
+                case '-':
+                default:
+                    sb.append('-');
+                    break;
+            }
+        }
+        return sb.toString();
+    }
 }
+
