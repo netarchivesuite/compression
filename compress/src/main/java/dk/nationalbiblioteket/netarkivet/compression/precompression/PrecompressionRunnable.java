@@ -46,6 +46,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 
+import java.lang.StringBuilder;
+
 import static java.lang.Thread.sleep;
 
 /**
