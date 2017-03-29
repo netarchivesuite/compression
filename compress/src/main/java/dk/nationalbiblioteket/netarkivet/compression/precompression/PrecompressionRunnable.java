@@ -33,7 +33,9 @@ import org.jwat.common.Uri;
 import org.jwat.common.UriProfile;
 import org.jwat.tools.tasks.cdx.CDXEntry;
 import org.jwat.tools.tasks.cdx.CDXFile;
+import org.jwat.tools.tasks.cdx.CDXFormatter;
 import org.jwat.tools.tasks.cdx.CDXOptions;
+import org.jwat.tools.tasks.cdx.CDXResult;
 import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
@@ -201,6 +203,9 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                 throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
             }
         }
+        if (gzipFile.exists()) {
+            System.out.println("File " + gzipFile.getAbsolutePath() + " could not be deleted. Deleting on exit.");
+        }
     }
 
     private static synchronized void writeMD5(File gzipFile) throws FatalException {
@@ -228,22 +233,15 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
-    class CDXFileExt extends CDXFile {
-        List<CDXEntry> getEntries(){
-            return entries;
-        }
-    }
-
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws FatalException, WeirdFileException {
-        CDXFileExt uncompressedCDXFile = new CDXFileExt();
-        uncompressedCDXFile.processFile(uncompressedFile);
-        List<CDXEntry> uncompressedEntries = uncompressedCDXFile.getEntries();
-        CDXFileExt compressedCDXFile = new CDXFileExt();
-        compressedCDXFile.processFile(compressedFile);
-        List<CDXEntry> compressedEntries = compressedCDXFile.getEntries();
-        Iterator<CDXEntry> ocdxIt = uncompressedEntries.iterator();
-        Iterator<CDXEntry> ncdxIt = compressedEntries.iterator();
+        CDXFormatter formatter = new CDXFormatter();
+        CDXFile uncompressedCDXFile = new CDXFile();
+        CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile);
+        CDXFile compressedCDXFile = new CDXFile();
+        CDXResult compressedResult = compressedCDXFile.processFile(compressedFile);
+        Iterator<CDXEntry> ocdxIt = uncompressedResult.getEntries().iterator();
+        Iterator<CDXEntry> ncdxIt = compressedResult.getEntries().iterator();
         String waybackCdxSpec = " CDX N b a m s k r V g";
         try (
                 PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
@@ -254,7 +252,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                 CDXEntry oEntry = ocdxIt.next();
                 CDXEntry nEntry = ncdxIt.next();
                 ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + oEntry.date.getTime());
-                cdxWriter.println(cdxEntry(nEntry, "NbamskrVg".toCharArray()));
+                cdxWriter.println(formatter.cdxEntry(nEntry,compressedFile.getName(),"NbamskrVg".toCharArray()));
             }
         } catch (IOException | NullPointerException e) {
             throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
@@ -292,8 +290,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
-
-    public static String cdxEntry(CDXEntry entry, char[] format) {
+    public String cdxEntry(CDXEntry entry, String filename, char[] format) {
         StringBuilder sb = new StringBuilder();
         sb.setLength(0);
         char c;
@@ -301,7 +298,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         String host;
         int port;
         String query;
-        for (int i=0; i<format.length; ++i) {
+        for (int i = 0; i < format.length; ++i) {
             if (sb.length() > 0) {
                 sb.append(' ');
             }
@@ -387,7 +384,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                     sb.append(entry.length);
                     break;
                 case 'g':
-                    sb.append(entry.fileName);
+                    sb.append(filename);
                     break;
                 case '-':
                 default:
@@ -397,5 +394,6 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
         return sb.toString();
     }
+
 }
 

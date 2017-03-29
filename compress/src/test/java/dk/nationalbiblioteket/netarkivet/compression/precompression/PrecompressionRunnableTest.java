@@ -1,6 +1,8 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
+import dk.nationalbiblioteket.netarkivet.compression.FatalException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.collections.list.AbstractLinkedList;
 import org.apache.commons.io.FileUtils;
 import org.jwat.tools.tasks.cdx.CDXFile;
@@ -61,12 +63,7 @@ public class PrecompressionRunnableTest {
 
     @Test(dataProvider = "fileNameProvider")
     @Parameters("inputFile")
-    public void testPrecompress(File inputFile) {
-        System.out.println(inputFile.getAbsolutePath());
-    }
-
-    @org.testng.annotations.Test
-    public void testPrecompress() throws Exception {
+    public void testPrecompress(File inputFile) throws WeirdFileException, FatalException, IOException {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
         Util.properties.put(Util.CDX_ROOT_DIR, "cdxes");
@@ -76,56 +73,13 @@ public class PrecompressionRunnableTest {
         Util.properties.put(Util.TEMP_DIR, "output");
         Util.properties.put(Util.THREADS, "10");
         Util.properties.put(Util.LOG, "output/log");
+        File ifileSubdir = Util.getIFileSubdir(inputFile.getName(), false);
+        File ifile = new File(ifileSubdir, inputFile.getName() + ".ifile.cdx");
+        assertFalse(ifile.exists());
         PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
-        consumer.precompress(inputFile);
-        File f1 = new File("ifiles/0/0/0/3/3-1-20161205101105604-00000-14970.arc.ifile.cdx");
-        assertTrue(f1.exists(), f1.getAbsolutePath());
+        consumer.precompress(inputFile.getAbsolutePath());
+        assertTrue(ifile.exists(), ifile.getAbsolutePath() + " should exist.");
+        assertTrue(FileUtils.readLines(ifile).size() > 10);
     }
-
-    @org.testng.annotations.Test
-    public void testPrecompressArc() throws Exception {
-        Util.properties = new Properties();
-        Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
-        Util.properties.put(Util.CDX_ROOT_DIR, "cdxes");
-        Util.properties.put(Util.IFILE_DEPTH, "4");
-        Util.properties.put(Util.CDX_DEPTH, "0");
-        Util.properties.put(Util.MD5_FILEPATH,   "output/checksum_CS.md5");
-        Util.properties.put(Util.TEMP_DIR, "output");
-        Util.properties.put(Util.THREADS, "10");
-        Util.properties.put(Util.LOG, "output/log");
-        PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
-        final String filename = "src/test/data/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc";
-        final File inputFile = new File(filename);
-        assertTrue(inputFile.exists());
-        String outputFileS = "ifiles/1/1/8/5/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc.ifile.cdx";
-        File outputFile = new File(outputFileS);
-        assertFalse(outputFile.exists());
-        consumer.precompress(filename);
-        assertTrue(FileUtils.readLines(outputFile).size() > 10);
-
-    }
-
-
-    @org.testng.annotations.Test
-    public void testPrecompressWarc() throws Exception {
-        Util.properties = new Properties();
-        Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
-        Util.properties.put(Util.CDX_ROOT_DIR, "cdxes");
-        Util.properties.put(Util.IFILE_DEPTH, "4");
-        Util.properties.put(Util.CDX_DEPTH, "0");
-        Util.properties.put(Util.MD5_FILEPATH,   "output/checksum_CS.md5");
-        Util.properties.put(Util.TEMP_DIR, "output");
-        Util.properties.put(Util.THREADS, "10");
-        Util.properties.put(Util.LOG, "output/log");
-        PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
-        final String filename = "src/test/data/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc";
-        assertTrue(new File(filename).exists());
-        String outputFileS = "ifiles/0/0/0/2/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc.ifile.cdx";
-        File outputFile = new File(outputFileS);
-        assertFalse(outputFile.exists());
-        consumer.precompress(filename);
-        assertTrue(FileUtils.readLines(outputFile).size() > 10);
-    }
-
 
 }
