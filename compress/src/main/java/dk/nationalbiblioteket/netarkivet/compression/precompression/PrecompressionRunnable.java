@@ -173,7 +173,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         System.gc();
         if (System.getProperty("os.name").contains("Windows")){
             int tries = 0;
-            int maxTries = 20;
+            int maxTries = 4;
             while (gzipFile.exists() && tries < maxTries) {
                 try {
                     Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
