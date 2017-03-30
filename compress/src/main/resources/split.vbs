@@ -18,7 +18,7 @@ Do Until objTextFile.AtEndOfStream
         Counter = 0
         FileCounter = FileCounter + 1
         if Not objOutTextFile is Nothing then objOutTextFile.Close
-        Set objOutTextFile = objFSO.OpenTextFile( OutputFile & "_" & FileCounter & ".csv", ForWriting, True)
+        Set objOutTextFile = objFSO.OpenTextFile( OutputFile & "_" & FileCounter, ForWriting, True)
     end if
     strNextLine = objTextFile.Readline
     objOutTextFile.WriteLine(strNextLine)

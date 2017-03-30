@@ -1,3 +1,4 @@
+ECHO OFF
 IF [%2]==[] GOTO NO_ARGUMENT
 
 cscript split.vbs %1 %2
@@ -6,7 +7,7 @@ Set CLASS=PreCompressor
 Set JARDIR=%~dp0\..\lib
 Set CONFDIR=%~dp0\..\config
 
-for %%F in (split_output_*)  do (
+for %%f in (split_output_*)  do (
    java -classpath "%JARDIR%/*" -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %%f
    del %%f
 )
