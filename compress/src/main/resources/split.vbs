@@ -23,7 +23,6 @@ Do Until objTextFile.AtEndOfStream
     strNextLine = objTextFile.Readline
     objOutTextFile.WriteLine(strNextLine)
     Counter = Counter + 1
-    Wscript.echo Counter
 Loop
 objTextFile.Close
 objOutTextFile.Close
