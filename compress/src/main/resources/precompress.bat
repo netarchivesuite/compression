@@ -1,4 +1,3 @@
-ECHO OFF
 IF [%2]==[] GOTO NO_ARGUMENT
 
 cscript split.vbs %1 %2
