@@ -1,6 +1,6 @@
 IF [%2]==[] GOTO NO_ARGUMENT
 
-cscript split.vbs %1 %2
+cscript %~dp0\split.vbs %1 %2
 Set PACKAGE=dk.nationalbiblioteket.netarkivet.compression.precompression
 Set CLASS=PreCompressor
 Set JARDIR=%~dp0\..\lib

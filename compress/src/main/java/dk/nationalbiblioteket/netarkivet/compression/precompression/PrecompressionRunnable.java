@@ -99,18 +99,25 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         warcIndexer.setCanonicalizer(canonicalizer);
     }
 
-    public void precompress(String filename) throws FatalException, WeirdFileException {
+    /**
+     *
+     * @param filename
+     * @return True if the file was processed. False if the was not processed but for some valid reason.
+     * @throws FatalException  if the file should have been processed but couldn't be for some unexpected reason.
+     * @throws WeirdFileException if the input file couldn't be parsed normallt.
+     */
+    public boolean precompress(String filename) throws FatalException, WeirdFileException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
-            return;
+            return false;
         }
         File iFileSubdir = Util.getIFileSubdir(inputFile.getName(), true);
         File cdxSubdir = Util.getCDXSubdir(inputFile.getName(), true);
         File iFile = new File(iFileSubdir, inputFile.getName() + ".ifile.cdx");
         if (iFile.exists()) {
             System.out.println("File " + iFile.getAbsolutePath() + " already exists so not reprocessing.");
-            return;
+            return false;
         }
         File gzipFile = doCompression(inputFile);
         checkConsistency(inputFile, gzipFile);
@@ -126,6 +133,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             }
         }
         deleteFile(gzipFile, true);
+        return true;
     }
 
     private File doCompression(File inputFile) throws WeirdFileException {
@@ -266,8 +274,9 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             String filename = null;
             try {
                 filename = sharedQueue.take();
-                precompress(filename);
-                writeCompressionLog(filename + " processed successfully.");
+                 if (precompress(filename)) {
+                     writeCompressionLog(filename + " processed successfully.");
+                 }
             } catch (WeirdFileException we) {
                 try {
                     writeCompressionLog(filename + " could not be processed.");
