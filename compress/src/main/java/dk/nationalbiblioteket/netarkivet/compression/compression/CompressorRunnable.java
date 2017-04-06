@@ -110,8 +110,10 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     }
 
     private File doCompression(File inputFile) throws WeirdFileException {
+        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
+        tmpdir.mkdirs();
         CompressOptions compressOptions = new CompressOptions();
-        compressOptions.dstPath = inputFile.getParentFile();
+        compressOptions.dstPath = tmpdir;
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
         this.compressFile(inputFile, compressOptions);
