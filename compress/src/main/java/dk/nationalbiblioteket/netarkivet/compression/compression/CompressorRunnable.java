@@ -117,7 +117,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
         this.compressFile(inputFile, compressOptions);
-        File gzipFile = new File (inputFile.getParentFile(), inputFile.getName() + ".gz");
+        File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
             throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
         } else {
