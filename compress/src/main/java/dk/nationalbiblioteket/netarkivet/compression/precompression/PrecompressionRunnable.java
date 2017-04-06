@@ -224,21 +224,36 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new FatalException(e);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
-            writer.println(gzipFile.getName() + "##" + md5);
-        } catch (IOException e) {
-            throw new FatalException(e);
+        writeToFile(new File(md5Filepath), gzipFile.getName() + "##" + md5, 5, 1000L);
+    }
+
+    private static synchronized void writeToFile(File file, String msg, int tries, long delay) throws FatalException {
+        String errMsg;
+        boolean done = false;
+        for (int i = 0; !done && i <= tries ; i++) {
+            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file, true)))) {
+                writer.println(msg);
+                done = true;
+            } catch (IOException e) {
+                errMsg = "Warning: Error writing to file " + file.getAbsolutePath();
+                if (i < tries) {
+                    System.out.println(errMsg);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e1) {
+                        throw new FatalException(e1);
+                    }
+                } else {
+                    throw new FatalException(e);
+                }
+            }
         }
     }
 
     private static synchronized void writeCompressionLog(String message) throws FatalException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         (new File(compressionLogPath)).getParentFile().mkdirs();
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
-            writer.println(message);
-        } catch (IOException e) {
-            throw new FatalException(e);
-        }
+        writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
 
 
