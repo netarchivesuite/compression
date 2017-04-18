@@ -27,6 +27,7 @@ public class Util {
     public static final String THREADS = "THREADS";
     public static final String UPDATED_FILENAME_MD5_FILEPATH = "UPDATED_FILENAME_MD5_FILEPATH";
     public static final String COMPRESSION_LEVEL = "9";
+    public static final String DRYRUN = "DRYRUN";
 
     private static final Pattern METADATA_NAME_PATTERN = Pattern.compile("([0-9]*-metadata-)([0-9]+)(.(w)?arc)(.gz)?");
 

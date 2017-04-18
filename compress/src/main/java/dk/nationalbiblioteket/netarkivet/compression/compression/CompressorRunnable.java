@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.xpath.operations.Bool;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 
@@ -60,11 +61,14 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
         }
-        inputFile.setWritable(true);
-        System.gc();
-        inputFile.delete();
-        if (inputFile.exists()) {
-            inputFile.deleteOnExit();
+        boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
+        if (!dryrun) {
+            inputFile.setWritable(true);
+            System.gc();
+            inputFile.delete();
+            if (inputFile.exists()) {
+                inputFile.deleteOnExit();
+            }
         }
     }
 
@@ -110,14 +114,13 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     }
 
     private File doCompression(File inputFile) throws WeirdFileException {
-        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
-        tmpdir.mkdirs();
+        File gzipFile = getOutputGzipFile(inputFile);
+        gzipFile.getParentFile().mkdirs();
         CompressOptions compressOptions = new CompressOptions();
-        compressOptions.dstPath = tmpdir;
+        compressOptions.dstPath = gzipFile.getParentFile();
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
         this.compressFile(inputFile, compressOptions);
-        File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
             throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
         } else {
@@ -125,6 +128,10 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
     }
 
+    private File getOutputGzipFile(File inputFile) {
+        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
+        return new File (tmpdir, inputFile.getName() + ".gz");
+    }
 
     @Override
     public void run() {
@@ -133,7 +140,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
             try {
                 filename = sharedQueue.take();
                 compress(filename);
-                writeCompressionLog("Compressed " + filename + " to " + filename + ".gz");
+                writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
             } catch (Exception e) {
                 isDead = true;
                 writeCompressionLog("Failed to compress " + filename + " " + e.getMessage());
