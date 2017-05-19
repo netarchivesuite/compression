@@ -1,13 +1,12 @@
 package dk.nationalbiblioteket.netarkivet.compression.compression;
 
-import dk.nationalbiblioteket.netarkivet.compression.FatalException;
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.xpath.operations.Bool;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 
@@ -17,7 +16,6 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -44,7 +42,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
     }
 
-    public void compress(String filename) throws FatalException, WeirdFileException, IOException {
+    public void compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
@@ -72,21 +70,21 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
     }
 
-    private static synchronized void writeRename(File oldFile, File newFile) throws FatalException {
+    private static synchronized void writeRename(File oldFile, File newFile) throws DeeplyTroublingException {
            File renameFile = new File("rename.bat");
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(renameFile, true)))) {
             writer.println("rename \"" + oldFile.getAbsolutePath() + "\" " + newFile.getName());
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
     }
 
-    private static void validateMD5(File gzipFile) throws FatalException, IOException {
+    private static void validateMD5(File gzipFile) throws DeeplyTroublingException, IOException {
         String md5;
         try {
             md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
         LineIterator lineIterator = FileUtils.lineIterator(new File(md5Filepath));
@@ -98,7 +96,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                     if (md5.equals(md5Expected)) {
                         return;
                     } else {
-                        throw new FatalException("Wrong checksum for " + gzipFile);
+                        throw new DeeplyTroublingException("Wrong checksum for " + gzipFile);
                     }
                 }
             }
@@ -129,8 +127,14 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     }
 
     private File getOutputGzipFile(File inputFile) {
-        File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
-        return new File (tmpdir, inputFile.getName() + ".gz");
+        final String outputDirString = Util.getProperties().getProperty(Util.OUTPUT_DIR);
+        File outputDir = null;
+        if (outputDirString == null || outputDirString.trim().length() == 0) {
+            outputDir = inputFile.getParentFile();
+        } else {
+            outputDir = new File(outputDirString);
+        }
+        return new File (outputDir, inputFile.getName() + ".gz");
     }
 
     @Override

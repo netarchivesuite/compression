@@ -6,7 +6,7 @@
 
     <groupId>dk.nationalbiblioteket</groupId>
     <artifactId>compression</artifactId>
-    <version>1.3-SNAPSHOT</version>
+    <version>1.4-SNAPSHOT</version>
 
     <scm>
         <url>https://github.com/netarchivesuite/compression</url>

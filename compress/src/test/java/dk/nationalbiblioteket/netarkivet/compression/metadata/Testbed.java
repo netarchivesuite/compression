@@ -23,6 +23,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -39,6 +41,7 @@ public class Testbed {
 
     String input_warc = "src/test/data/WORKING/10-metadata-1.warc";
     String input_arc = "src/test/data/WORKING/3-metadata-1.arc";
+    String special_arc = "src/test/data/WORKING/temp.arc";
     String output_dir_S = "src/test/working";
     File output_dir = new File(output_dir_S);
 
@@ -47,6 +50,26 @@ public class Testbed {
         FileUtils.deleteDirectory(output_dir);
         FileUtils.forceMkdir(output_dir);
         MetadatafileGeneratorRunnableTest.setup();
+    }
+
+    @Test
+    public void testIterateOverProblemFile() throws IOException {
+        File input = new File(special_arc);
+        InputStream is = new FileInputStream(input);
+        ArcReader reader = ArcReaderFactory.getReader(is);
+        final Iterator<ArcRecordBase> iterator = reader.iterator();
+        while (iterator.hasNext()) {
+            ArcRecordBase recordBase = iterator.next();
+            System.out.println("Reading record " + recordBase.getUrlStr());
+            byte[] payload = new byte[]{};
+            if (recordBase.hasPayload()) {
+                try {
+                    payload = IOUtils.toByteArray(recordBase.getPayload().getInputStreamComplete());
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
     }
 
     @Test

@@ -4,6 +4,7 @@ import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.precompression.PrecompressionRunnable;
 import dk.netarkivet.common.utils.Settings;
 import dk.netarkivet.harvester.HarvesterSettings;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 /**
  * Generates new metadatafiles from old metadatafiles - transforming cdx records to and adding new
@@ -27,7 +29,7 @@ public class MetadatafileGenerator {
 
 
     private void fillQueue(String filelistFilename) throws IOException {
-        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
+        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(StringUtils::isNotBlank).collect(Collectors.toList()));
     }
 
     private void startConsumers() {

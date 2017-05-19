@@ -1,11 +1,9 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
-import dk.nationalbiblioteket.netarkivet.compression.FatalException;
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
-import org.apache.commons.collections.list.AbstractLinkedList;
 import org.apache.commons.io.FileUtils;
-import org.jwat.tools.tasks.cdx.CDXFile;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
@@ -13,7 +11,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -38,7 +35,7 @@ public class PrecompressionRunnableTest {
 
     @org.testng.annotations.AfterMethod
     public void tearDown() throws Exception {
-        //cleanup();
+        cleanup();
     }
 
     private void cleanup() throws IOException {
@@ -50,6 +47,7 @@ public class PrecompressionRunnableTest {
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
          File[] files = new File[]{
+                 new File("src/test/data/733-44-20101217211223-00007-sb-test-har-001.statsbiblioteket.dk.arc"),
                  new File("src/test/data/3-1-20161205101105604-00000-14970.arc"),
                  new File("src/test/data/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc"),
                  new File("src/test/data/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc")
@@ -63,7 +61,7 @@ public class PrecompressionRunnableTest {
 
     @Test(dataProvider = "fileNameProvider")
     @Parameters("inputFile")
-    public void testPrecompress(File inputFile) throws WeirdFileException, FatalException, IOException {
+    public void testPrecompress(File inputFile) throws WeirdFileException, DeeplyTroublingException, IOException {
         Util.properties = new Properties();
         Util.properties.put(Util.IFILE_ROOT_DIR, "ifiles" );
         Util.properties.put(Util.CDX_ROOT_DIR, "cdxes");

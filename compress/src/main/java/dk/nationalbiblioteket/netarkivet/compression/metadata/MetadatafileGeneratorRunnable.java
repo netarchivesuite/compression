@@ -1,6 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-import dk.nationalbiblioteket.netarkivet.compression.FatalException;
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
@@ -11,7 +11,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.archive.util.io.RuntimeIOException;
 import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
 import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
@@ -66,7 +65,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
      * is relative to current working dir.
      * @param filename
      */
-    void processFile(String filename) throws IOException, WeirdFileException, FatalException {
+    void processFile(String filename) throws IOException, WeirdFileException, DeeplyTroublingException {
         Properties properties = Util.getProperties();
         String inputPath = properties.getProperty(Util.METADATA_DIR);
         File inputFile;
@@ -111,7 +110,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 ArcRecordBase recordBase = iterator.next();
                 byte[] payload = new byte[]{};
                 if (recordBase.hasPayload()) {
-                    payload = IOUtils.toByteArray(recordBase.getPayloadContent());
+                    payload = IOUtils.toByteArray(recordBase.getPayload().getInputStreamComplete());
                 }
                 String url = recordBase.getUrlStr();
                 if (url.contains("crawl.log")) {
@@ -244,18 +243,18 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return new byte[][] {migrationOutput.toString().getBytes(), cdxOutput.toString().getBytes()};
     }
 
-    private static synchronized void writeMD5UpdatedFilename(File gzipFile) throws FatalException {
+    private static synchronized void writeMD5UpdatedFilename(File gzipFile) throws DeeplyTroublingException {
         String md5;
         try {
             md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.UPDATED_FILENAME_MD5_FILEPATH);
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
             writer.println(gzipFile.getName() + "##" + md5);
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
     }
 
@@ -269,7 +268,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                  processFile(filename);
              } catch (InterruptedException e) {
                  throw new RuntimeException(e);
-             } catch (FatalException | WeirdFileException | IOException e) {
+             } catch (DeeplyTroublingException | WeirdFileException | IOException e) {
                  isDead = true;
                  throw new RuntimeException(e);
              }

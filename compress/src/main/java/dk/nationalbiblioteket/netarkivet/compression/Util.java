@@ -17,6 +17,7 @@ public class Util {
     public static final String CDX_ROOT_DIR = "CDX_ROOT_DIR";
     public static final String IFILE_DEPTH = "IFILE_DEPTH";
     public static final String TEMP_DIR = "TEMP_DIR";
+    public static final String OUTPUT_DIR = "OUTPUT_DIR";
     public static final String NMETADATA_DIR = "NMETADATA_DIR";
     public static final String METADATA_DIR = "METADATA_DIR";
     public static final String CACHE_SIZE = "CACHE_SIZE";

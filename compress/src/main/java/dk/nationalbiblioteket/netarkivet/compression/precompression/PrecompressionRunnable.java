@@ -4,39 +4,29 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 
-import dk.nationalbiblioteket.netarkivet.compression.FatalException;
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.logging.Level;
 
-import org.apache.commons.io.LineIterator;
 import org.apache.commons.io.output.NullOutputStream;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
-import org.archive.wayback.resourceindex.cdx.SearchResultToCDXFormatAdapter;
-import org.archive.wayback.resourceindex.cdx.format.CDXFormat;
-import org.archive.wayback.resourceindex.cdx.format.CDXFormatException;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
-import org.archive.wayback.util.url.IdentityUrlCanonicalizer;
 import org.jwat.arc.ArcDateParser;
 import org.jwat.common.Uri;
 import org.jwat.common.UriProfile;
 import org.jwat.tools.tasks.cdx.CDXEntry;
 import org.jwat.tools.tasks.cdx.CDXFile;
 import org.jwat.tools.tasks.cdx.CDXFormatter;
-import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXResult;
-import org.jwat.tools.tasks.cdx.CDXTask;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 
@@ -99,7 +89,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         warcIndexer.setCanonicalizer(canonicalizer);
     }
 
-    public void precompress(String filename) throws FatalException, WeirdFileException {
+    public void precompress(String filename) throws DeeplyTroublingException, WeirdFileException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
@@ -122,7 +112,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                 //Create an empty file here as a placeholder to show that this input file has been processed.
                 iFile.createNewFile();
             } catch (IOException e) {
-                throw new FatalException("Could not create ifile " + iFile.getAbsolutePath());
+                throw new DeeplyTroublingException("Could not create ifile " + iFile.getAbsolutePath());
             }
         }
         deleteFile(gzipFile, true);
@@ -144,28 +134,28 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
-    private void checkConsistency(File inputFile, File gzipFile) throws FatalException {
+    private void checkConsistency(File inputFile, File gzipFile) throws DeeplyTroublingException {
         String nsha1;
         String osha1;
         try {
             osha1 = DigestUtils.sha1Hex(new FileInputStream(inputFile));
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
         try {
             nsha1 = DigestUtils.sha1Hex(new GZIPInputStream(new FileInputStream(gzipFile)));
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
         if (!nsha1.equals(osha1)) {
             final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
             deleteFile(gzipFile, false);
-            throw new FatalException(message);
+            throw new DeeplyTroublingException(message);
         }
     }
 
-    private void deleteFile(File gzipFile, boolean writeMD5) throws FatalException {
+    private void deleteFile(File gzipFile, boolean writeMD5) throws DeeplyTroublingException {
         if (writeMD5) {
             writeMD5(gzipFile);
         }
@@ -185,12 +175,12 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                             sleep(5000);
                         } catch (InterruptedException e) {
                             gzipFile.deleteOnExit();
-                            //throw new FatalException(e);
+                            //throw new DeeplyTroublingException(e);
                         }
                     }
                 } catch (IOException e) {
                     gzipFile.deleteOnExit();
-                    //throw new FatalException(e);
+                    //throw new DeeplyTroublingException(e);
                 }
             }
             if (gzipFile.exists()) {
@@ -200,7 +190,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             try {
                 Files.delete(gzipFile.toPath());
             } catch (IOException e) {
-                throw new FatalException("Could not delete " + gzipFile.getAbsolutePath(), e);
+                throw new DeeplyTroublingException("Could not delete " + gzipFile.getAbsolutePath(), e);
             }
         }
         if (gzipFile.exists()) {
@@ -208,18 +198,18 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
-    private static synchronized void writeMD5(File gzipFile) throws FatalException {
+    private static synchronized void writeMD5(File gzipFile) throws DeeplyTroublingException {
         String md5;
         try {
             md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
         } catch (IOException e) {
-            throw new FatalException(e);
+            throw new DeeplyTroublingException(e);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
         writeToFile(new File(md5Filepath), gzipFile.getName() + "##" + md5, 5, 1000L);
     }
 
-    private static synchronized void writeToFile(File file, String msg, int tries, long delay) throws FatalException {
+    private static synchronized void writeToFile(File file, String msg, int tries, long delay) throws DeeplyTroublingException {
         String errMsg;
         boolean done = false;
         for (int i = 0; !done && i <= tries ; i++) {
@@ -233,23 +223,23 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                     try {
                         Thread.sleep(delay);
                     } catch (InterruptedException e1) {
-                        throw new FatalException(e1);
+                        throw new DeeplyTroublingException(e1);
                     }
                 } else {
-                    throw new FatalException(e);
+                    throw new DeeplyTroublingException(e);
                 }
             }
         }
     }
 
-    private static synchronized void writeCompressionLog(String message) throws FatalException {
+    private static synchronized void writeCompressionLog(String message) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         (new File(compressionLogPath)).getParentFile().mkdirs();
         writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
 
 
-    private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws FatalException, WeirdFileException {
+    private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws DeeplyTroublingException, WeirdFileException {
         CDXFormatter formatter = new CDXFormatter();
         CDXFile uncompressedCDXFile = new CDXFile();
         CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile);
@@ -286,21 +276,21 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             } catch (WeirdFileException we) {
                 try {
                     writeCompressionLog(filename + " could not be processed.");
-                } catch (FatalException e) {
-                    isDead = true;
+                } catch (DeeplyTroublingException e) {
+                    // isDead = true;
                     errorMessage = e.getMessage();
-                    throw new RuntimeException("Could not write log entry", e);
+                    throw new RuntimeException("Could not write log entry for " + filename, e);
                 }
-            } catch (Exception e) {
+            } catch (DeeplyTroublingException | InterruptedException e) {
                 //Mark as dead and let this thread die.
-                isDead = true;
+                //isDead = true;
                 errorMessage = e.getMessage();
                 try {
-                    writeCompressionLog(filename + " not processed successfully");
-                } catch (FatalException e1) {
-                    throw new RuntimeException(e1);
+                    writeCompressionLog(filename + " not processed successfully " + errorMessage);
+                } catch (DeeplyTroublingException e1) {
+                    throw new RuntimeException("Could not write compression log for " + filename ,  e1);
                 }
-                throw new RuntimeException(e);
+                //throw new RuntimeException(e);
             }
         }
     }
