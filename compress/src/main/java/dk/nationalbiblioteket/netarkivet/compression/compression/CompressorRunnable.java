@@ -42,11 +42,20 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
     }
 
-    public void compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
+    /**
+     * Compresses the file. Returns true if the file is compressed, false if it cannot be compressed for a well-understtod reason,
+     * throws an exception if it cannot be compressed for some other reason.
+     * @param filename
+     * @return
+     * @throws DeeplyTroublingException
+     * @throws WeirdFileException
+     * @throws IOException
+     */
+    public boolean compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
-            return;
+            return false;
         }
         File gzipFile = doCompression(inputFile);
         validateMD5(gzipFile);
@@ -68,6 +77,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                 inputFile.deleteOnExit();
             }
         }
+        return true;
     }
 
     private static synchronized void writeRename(File oldFile, File newFile) throws DeeplyTroublingException {
@@ -143,8 +153,9 @@ public class CompressorRunnable extends CompressFile implements Runnable {
             String filename = null;
             try {
                 filename = sharedQueue.take();
-                compress(filename);
-                writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
+                if (compress(filename)) {
+                    writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
+                }
             } catch (Exception e) {
                 isDead = true;
                 writeCompressionLog("Failed to compress " + filename + " " + e.getMessage());
