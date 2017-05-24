@@ -87,7 +87,16 @@
             <artifactId>archive-core</artifactId>
             <version>5.3-SNAPSHOT</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.1</version>
+        </dependency>
+        <dependency>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+          <version>1.2.3</version>
+        </dependency>
     </dependencies>
 
     <build>

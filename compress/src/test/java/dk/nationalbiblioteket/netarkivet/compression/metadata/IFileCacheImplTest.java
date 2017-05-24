@@ -25,7 +25,7 @@ public class IFileCacheImplTest {
         Util.properties.put(Util.IFILE_DEPTH, "2");
         Util.properties.put(Util.TEMP_DIR, "/tmp");
         Util.properties.put(Util.CACHE_SIZE, "2");
-        IFileCacheImpl cache = IFileCacheImpl.getIFileCacheImpl();
+        IFileCacheImpl cache = IFileCacheImpl.getIFileCacheImpl(new IFileLoaderImpl());
         assertEquals(cache.getIFileEntry("37-testfile.arc", 1500L).getNewOffset().longValue(), 1200L);
         assertEquals(cache.getIFileEntry("2-testfile.arc", 1000L).getNewOffset().longValue(), 500L);
         assertEquals(cache.getIFileEntry("371-testfile.arc", 3500L).getNewOffset().longValue(), 2700L);

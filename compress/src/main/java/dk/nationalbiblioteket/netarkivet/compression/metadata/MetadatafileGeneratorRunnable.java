@@ -27,6 +27,7 @@ import org.jwat.warc.WarcRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -34,11 +35,13 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
@@ -61,11 +64,16 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     /**
      * Takes a filename corresponding to an old-style uncompressed metadata file and creates a new
      * compressed metadata file with i) modified cdx records and ii) a new deduplication-info record.
+     * Also renames the original file, replacing "metadata" in the name with "oldmetadata".
      * If Util.METADATA_DIR is not null then the filename is interpreted relative to that. Otherwise it
      * is relative to current working dir.
+     *
+     * If the file has already been reprocessed, then this method returns false
+     *
      * @param filename
+     * @return whether or not the file was processed
      */
-    void processFile(String filename) throws IOException, WeirdFileException, DeeplyTroublingException {
+    boolean processFile(String filename) throws IOException, WeirdFileException, DeeplyTroublingException {
         Properties properties = Util.getProperties();
         String inputPath = properties.getProperty(Util.METADATA_DIR);
         File inputFile;
@@ -74,8 +82,15 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } else {
             inputFile = new File(filename);
         }
+        logger.info("Processing {}.", inputFile.getAbsolutePath());
+        final String replacementFilename = inputFile.getName().replace("metadata", "oldmetadata");
+        final File dest = new File(inputFile.getParentFile(), replacementFilename);
+        if (dest.exists()) {
+            logger.info("Found output file {} so skipping.", dest.getAbsolutePath());
+            return false;
+        }
         if (!inputFile.exists()) {
-            throw new NoSuchFileException("No such file: " + inputFile.getAbsolutePath());
+            throw new NoSuchFileException("Input file " + inputFile.getAbsolutePath() + " not found, and file has not already been processed.");
         }
         String outputDir = properties.getProperty(Util.NMETADATA_DIR);
         if (outputDir == null) {
@@ -90,16 +105,17 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
              processArcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else {
-            throw new WeirdFileException("Input metadata file is neither arc nor ward: " + filename);
+            throw new WeirdFileException("Input metadata file is neither arc nor warc: " + filename);
         }
-        final String replacementFilename = inputFile.getName().replace("metadata", "oldmetadata");
-        final File dest = new File(inputFile.getParentFile(), replacementFilename);
         inputFile.renameTo(dest);
         writeMD5UpdatedFilename(dest);
         writeMD5UpdatedFilename(outputFilePath.toFile());
+        logger.trace("Done processing " + inputFile.getAbsolutePath());
+        logger.trace(Util.getMemoryStats());
+        return true;
     }
 
-    private void processArcfile(File input, File output, File cdxDir) throws IOException {
+    private void processArcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterArc.createWriter(output);
         InputStream is = new FileInputStream(input);
@@ -109,13 +125,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             while (iterator.hasNext()) {
                 ArcRecordBase recordBase = iterator.next();
                 byte[] payload = new byte[]{};
-                if (recordBase.hasPayload()) {
-                    payload = IOUtils.toByteArray(recordBase.getPayload().getInputStreamComplete());
-                }
                 String url = recordBase.getUrlStr();
                 if (url.contains("crawl.log")) {
                     String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
-                    byte[][] dedupPayload = getDedupPayload(payload);
+                    byte[][] dedupPayload = getDedupPayload(recordBase.getPayload().getInputStreamComplete());
                     writer.write(dedupURI, "text/plain", recordBase.getIpAddress(),
                     System.currentTimeMillis(), dedupPayload[0]);
                     String dedupCdxURI = "metadata://crawl/index/deduplicationcdx?majorversion=0&minorversion=0";
@@ -124,7 +137,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
                     }
                 } else if (url.contains("index/cdx")) {
-                    payload = getUpdatedCdxPayload(payload);
+                    payload = getUpdatedCdxPayload(recordBase.getPayload().getInputStreamComplete());
                     url = url.replace(".arc", ".arc.gz");
                 }
                 writer.write(url, recordBase.getContentTypeStr(),
@@ -136,7 +149,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
     }
 
-    private void processWarcfile(File input, File output, File cdxDir) throws IOException {
+    private void processWarcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = MetadataFileWriterWarc.createWriter(output);
         InputStream is = new FileInputStream(input);
@@ -150,36 +163,51 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     infoPayload.addLabelValue("replaces", record.getHeader(WarcConstants.FN_WARC_FILENAME).value);
                     infoPayload.addValue(IOUtils.toString(record.getPayloadContent()));
                     ((MetadataFileWriterWarc) writer).insertInfoRecord(infoPayload);
-
                 } else if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("resource")) {
                     final HeaderLine uriLine = record.getHeader(WarcConstants.FN_WARC_TARGET_URI);
                     final HeaderLine contentTypeLine = record.getHeader(WarcConstants.FN_CONTENT_TYPE);
                     final HeaderLine hostIpLine = record.getHeader(WarcConstants.FN_WARC_IP_ADDRESS);
-                    byte[] payloadBytes = new byte[]{};
-
+                    byte[] newPayloadBytes = new byte[]{};
+                    Payload oldPayload = null;
+                    File oldPayloadFile = File.createTempFile("warcrecord", "txt");
                     if (record.hasPayload()) {
-                        Payload payload = record.getPayload();
-                        payloadBytes = IOUtils.toByteArray(payload.getInputStreamComplete());
+                        oldPayload = record.getPayload();
                     }
-                    //Note that in the case of the crawl log we add a new record, whereas in the case of
-                    //the cdx records we alter the record.
-                    if (uriLine.value.contains("crawl.log")) {
-                        //Ideally would like to include harvestid, harvestnum, jobid in following uri.
-                        String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
-                        byte[][] dedupPayload = getDedupPayload(payloadBytes);
-                        writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[0]);
-                        String dedupCdxURI = "metadata://crawl/index/dedupcdx?majorversion=0&minorversion=0";
-                        writer.write(dedupCdxURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[1]);
-                        if (dedupPayload[1].length > 0) {
-                            FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
+                    if (oldPayload != null) {
+                        try (InputStream oldPayloadIS = oldPayload.getInputStreamComplete()) {
+                            Files.copy(oldPayloadIS, oldPayloadFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         }
-                    } else if (uriLine.value.contains("index/cdx")) {
-                        uriLine.value = uriLine.value.replace("arc", "arc.gz");
-                        payloadBytes = getUpdatedCdxPayload(payloadBytes);
+                        //Note that in the case of the crawl log we add two new records, whereas in the case of
+                        //the cdx records we alter the record.
+                        if (uriLine.value.contains("crawl.log")) {
+                            byte[][] dedupPayload = null;
+                            try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
+                                 dedupPayload = getDedupPayload(oldPayloadIS);
+                            }
+                            String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
+                            writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[0]);
+                            logger.debug("Writing {} bytes to dedupmigration for {}.", dedupPayload[0].length, output.getAbsolutePath());
+                            String dedupCdxURI = "metadata://crawl/index/dedupcdx?majorversion=0&minorversion=0";
+                            writer.write(dedupCdxURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[1]);
+                            logger.debug("Writing {} bytes to dedupcdx for {}.", dedupPayload[1].length, output.getAbsolutePath());
+                            if (dedupPayload[1].length > 0) {
+                                FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
+                            }
+                            writer.writeTo(oldPayloadFile, valueOrNull(uriLine), valueOrNull(contentTypeLine));
+                        } else if (uriLine.value.contains("index/cdx")) {
+                            uriLine.value = uriLine.value.replace("arc", "arc.gz");
+                            try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
+                                newPayloadBytes = getUpdatedCdxPayload(oldPayloadIS);
+                            }
+                            logger.debug("Writing {} bytes to migrated cdx for {}.", newPayloadBytes.length, output.getAbsolutePath());
+                            writer.write(valueOrNull(uriLine),
+                                    valueOrNull(contentTypeLine),
+                                    valueOrNull(hostIpLine), System.currentTimeMillis(), newPayloadBytes);
+                        } else {
+                            writer.writeTo(oldPayloadFile, valueOrNull(uriLine), valueOrNull(contentTypeLine));
+                        }
                     }
-                    writer.write(valueOrNull(uriLine),
-                            valueOrNull(contentTypeLine),
-                            valueOrNull(hostIpLine), System.currentTimeMillis(), payloadBytes);
+                    oldPayloadFile.delete();
                 }
             }
         } finally {
@@ -187,7 +215,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
     }
 
-    private byte[] getUpdatedCdxPayload(byte[] cdxPayload) throws FileNotFoundException {
+    private byte[] getUpdatedCdxPayload(InputStream cdxPayloadIS) throws DeeplyTroublingException, FileNotFoundException {
         String cdxSpec = " CDX A r b m S g V k";
         CDXFormat cdxFormat = null;
         try {
@@ -195,51 +223,68 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } catch (CDXFormatException e) {
             throw new RuntimeException(e);
         }
-        String[] payload = new String(cdxPayload).split("\\r\\n|\\n|\\r");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < payload.length; i++) {
-            String line = payload[i];
-            CaptureSearchResult captureSearchResult = null;
-            try {
-                captureSearchResult = cdxFormat.parseResult(line);
-            } catch (CDXFormatException e) {
-                throw new RuntimeException("Cannot parse " + line);
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(cdxPayloadIS))) {
+            boolean firstLine = true;
+            String line;
+            StringBuilder sb = new StringBuilder();
+            while ((line = br.readLine()) != null) {
+                CaptureSearchResult captureSearchResult = null;
+                try {
+                    captureSearchResult = cdxFormat.parseResult(line);
+                } catch (CDXFormatException e) {
+                    throw new RuntimeException("Cannot parse " + line);
+                }
+                String file = captureSearchResult.getFile();
+                long oldOffset = captureSearchResult.getOffset();
+                IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+                IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
+                captureSearchResult.setOffset(iFileEntry.getNewOffset());
+                captureSearchResult.setFile(file + ".gz");
+                line = cdxFormat.serializeResult(captureSearchResult);
+                if (!firstLine) {
+                    sb.append("\n");
+                }
+                sb.append(line);
+                firstLine = false;
             }
-            String file = captureSearchResult.getFile();
-            long oldOffset = captureSearchResult.getOffset();
-            IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(file, oldOffset);
-            captureSearchResult.setOffset(iFileEntry.getNewOffset());
-            captureSearchResult.setFile(file + ".gz");
-            line = cdxFormat.serializeResult(captureSearchResult);
-            sb.append(line);
-            if (i != payload.length -1) {
-                sb.append("\n");
-            }
+            return sb.toString().getBytes();
+        } catch (IOException e) {
+            throw new DeeplyTroublingException(e);
         }
-        return sb.toString().getBytes();
     }
 
-    private byte[][] getDedupPayload(byte[] crawllogPayload) throws FileNotFoundException {
-        String[] input = new String(crawllogPayload).split("\\r\\n|\\n|\\r");
+    private byte[][] getDedupPayload(InputStream crawllogPayloadIS) throws DeeplyTroublingException {
+        final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
         StringBuffer migrationOutput = new StringBuffer();
         StringBuffer cdxOutput = new StringBuffer();
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
-        for (String line: input) {
-            if (line.contains("duplicate:")) {
-                String original = adapter.adaptLine(line);
-                if (original != null) {
-                    String[] split = StringUtils.split(original);
-                    String filename = split[8];
-                    String offset = split[7];
-                    IFileEntry iFileEntry = IFileCacheImpl.getIFileCacheImpl().getIFileEntry(filename, Long.parseLong(offset));
-                    migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append("\n");
-                    split[8] = filename + ".gz";
-                    split[7] = "" + iFileEntry.getNewOffset();
-                    cdxOutput.append(StringUtils.join(split, ' '));
-                    cdxOutput.append("\n");
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(crawllogPayloadIS))) {
+            boolean firstLine = true;
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.contains("duplicate:")) {
+                    String original = adapter.adaptLine(line);
+                    if (original != null) {
+                        if (!firstLine) {
+                            cdxOutput.append("\n");
+                            migrationOutput.append("\n");
+                        }
+                        firstLine = false;
+                        String[] split = StringUtils.split(original);
+                        String filename = split[8];
+                        String offset = split[7];
+                        IFileEntry iFileEntry = iFileCache.getIFileEntry(filename, Long.parseLong(offset));
+                        migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset());
+                        split[8] = filename + ".gz";
+                        split[7] = "" + iFileEntry.getNewOffset();
+                        cdxOutput.append(StringUtils.join(split, ' '));
+                    }
                 }
             }
+        } catch (IOException e) {
+            throw new DeeplyTroublingException(e);
         }
+        logger.trace("Cache size: {}", iFileCache.getCurrentCachesize());
         return new byte[][] {migrationOutput.toString().getBytes(), cdxOutput.toString().getBytes()};
     }
 

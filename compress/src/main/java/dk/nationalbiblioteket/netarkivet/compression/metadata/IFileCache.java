@@ -14,4 +14,6 @@ public interface IFileCache {
 
     Iterator<Map.Entry<Long, IFileEntry>> getOrderedListing(String oldFilename) throws FileNotFoundException;
 
+    int getCurrentCachesize();
+
 }

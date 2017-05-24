@@ -29,6 +29,7 @@ public class Util {
     public static final String UPDATED_FILENAME_MD5_FILEPATH = "UPDATED_FILENAME_MD5_FILEPATH";
     public static final String COMPRESSION_LEVEL = "9";
     public static final String DRYRUN = "DRYRUN";
+    public static final String USE_SOFT_CACHE = "USE_SOFT_CACHE";
 
     private static final Pattern METADATA_NAME_PATTERN = Pattern.compile("([0-9]*-metadata-)([0-9]+)(.(w)?arc)(.gz)?");
 
@@ -84,6 +85,12 @@ public class Util {
             }
         }
         return properties;
+    }
+
+    public static String getMemoryStats() {
+        Runtime runtime = Runtime.getRuntime();
+        int mb = 1024*1024;
+        return "Memory max/total/free (mb) = " + runtime.maxMemory()/mb + "/" + runtime.totalMemory()/mb + "/" + runtime.freeMemory()/mb ;
     }
 
 }

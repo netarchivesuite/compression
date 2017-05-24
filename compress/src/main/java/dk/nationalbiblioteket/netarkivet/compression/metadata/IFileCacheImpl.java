@@ -22,6 +22,8 @@ public class IFileCacheImpl implements IFileCache {
 
     private static IFileCacheImpl instance;
 
+    private IFileLoader iFileLoader;
+
     private ArrayBlockingQueue<String> elementQueue;
 
 
@@ -29,14 +31,15 @@ public class IFileCacheImpl implements IFileCache {
             new ConcurrentHashMap<String, ConcurrentSkipListMap<Long, IFileEntry>>();
 
 
-    private IFileCacheImpl() {
+    private IFileCacheImpl(IFileLoader iFileLoader) {
         int cacheSize = Integer.parseInt(Util.getProperties().getProperty(Util.CACHE_SIZE));
         elementQueue = new ArrayBlockingQueue<String>(cacheSize);
+        this.iFileLoader = iFileLoader;
     }
 
-    public static synchronized IFileCacheImpl getIFileCacheImpl() {
+    public static synchronized IFileCacheImpl getIFileCacheImpl(IFileLoader iFileLoader) {
         if (instance == null) {
-            instance = new IFileCacheImpl();
+            instance = new IFileCacheImpl(iFileLoader);
         }
         return instance;
     }
@@ -44,21 +47,7 @@ public class IFileCacheImpl implements IFileCache {
 
     private Map<Long,IFileEntry> loadFile(String filename) throws FileNotFoundException {
         synchronized (elementQueue) {
-            ConcurrentSkipListMap<Long, IFileEntry> newMap = new ConcurrentSkipListMap<>();
-            // Now actually load the map from the file
-            File subdir = Util.getIFileSubdir(filename, false);
-            File ifile = new File(subdir, filename + ".ifile.cdx");
-            if (!ifile.exists()) {
-                throw new FileNotFoundException("No such file: " + ifile.getAbsolutePath());
-            }
-            try(InputStream is = new FileInputStream(ifile)) {
-                for (Object lineO: IOUtils.readLines(is) ){
-                    String[] line = ((String) lineO).trim().split("\\s");
-                    newMap.put(Long.parseLong(line[0]), new IFileEntry(Long.parseLong(line[1]), line[2]));
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            ConcurrentSkipListMap<Long, IFileEntry> newMap = iFileLoader.getIFileEntryMap(filename);
             if (elementQueue.remainingCapacity() == 0) {
                 String evictedFilename = elementQueue.poll();
                 cache.remove(evictedFilename);
@@ -68,6 +57,7 @@ public class IFileCacheImpl implements IFileCache {
             return newMap;
         }
     }
+
 
     @Override
     public IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException {
@@ -91,5 +81,10 @@ public class IFileCacheImpl implements IFileCache {
                 return offsetMap.entrySet().iterator();
             }
         }
+    }
+
+    @Override
+    public int getCurrentCachesize() {
+        return cache.size();
     }
 }
