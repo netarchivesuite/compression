@@ -6,7 +6,7 @@
 
     <groupId>dk.nationalbiblioteket</groupId>
     <artifactId>compression</artifactId>
-    <version>1.4-SNAPSHOT</version>
+    <version>1.5-SNAPSHOT</version>
 
     <scm>
         <url>https://github.com/netarchivesuite/compression</url>
@@ -100,6 +100,7 @@
     </dependencies>
 
     <build>
+        <finalName>${project.artifactId}-${project.version}-${maven.build.timestamp}</finalName>
         <plugins>
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
