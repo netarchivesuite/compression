@@ -33,7 +33,7 @@ public class IFileCacheSoftImplTest {
         }
     }
 
-    @Test
+    //@Test
     public void testGetOrderedListing() throws Exception {
         Properties properties = new Properties();
         properties.setProperty(Util.CACHE_SIZE, "300");
