@@ -137,7 +137,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         FileUtils.writeByteArrayToFile(new File(cdxDir, input.getName() + ".cdx"), dedupPayload[1]);
                     }
                 } else if (url.contains("index/cdx")) {
-                    payload = getUpdatedCdxPayload(recordBase.getPayload().getInputStreamComplete());
+                    if (recordBase.hasPayload()) {
+                        payload = getUpdatedCdxPayload(recordBase.getPayload().getInputStreamComplete());
+                    }
                     url = url.replace(".arc", ".arc.gz");
                 }
                 writer.write(url, recordBase.getContentTypeStr(),
@@ -227,7 +229,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             boolean firstLine = true;
             String line;
             StringBuilder sb = new StringBuilder();
-            while ((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null && line.trim().length() > 0) {
                 CaptureSearchResult captureSearchResult = null;
                 try {
                     captureSearchResult = cdxFormat.parseResult(line);
@@ -261,7 +263,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         try (BufferedReader br = new BufferedReader(new InputStreamReader(crawllogPayloadIS))) {
             boolean firstLine = true;
             String line;
-            while ((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null && line.trim().length() > 0) {
                 if (line.contains("duplicate:")) {
                     String original = adapter.adaptLine(line);
                     if (original != null) {
