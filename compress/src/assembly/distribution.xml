@@ -35,6 +35,7 @@
       <outputDirectory>config</outputDirectory>
       <includes>
         <include>*.conf</include>
+        <include>*.xml</include>
       </includes>
     </fileSet>
   </fileSets>
