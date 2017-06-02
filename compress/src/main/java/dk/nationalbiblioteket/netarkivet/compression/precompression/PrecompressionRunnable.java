@@ -160,41 +160,14 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             writeMD5(gzipFile);
         }
         gzipFile.setWritable(true);
-        System.gc();
-        if (System.getProperty("os.name").contains("Windows")){
-            int tries = 0;
-            int maxTries = 4;
-            while (gzipFile.exists() && tries < maxTries) {
-                try {
-                    Process p = Runtime.getRuntime().exec("cmd /C del /F /Q " + gzipFile.getAbsolutePath());
-                    IOUtils.copy(p.getInputStream(), new NullOutputStream());
-                    IOUtils.copy(p.getErrorStream(), new NullOutputStream());
-                    tries ++;
-                    if (gzipFile.exists()) {
-                        try {
-                            sleep(5000);
-                        } catch (InterruptedException e) {
-                            gzipFile.deleteOnExit();
-                            //throw new DeeplyTroublingException(e);
-                        }
-                    }
-                } catch (IOException e) {
-                    gzipFile.deleteOnExit();
-                    //throw new DeeplyTroublingException(e);
-                }
-            }
-            if (gzipFile.exists()) {
-                gzipFile.deleteOnExit();
-            }
-        } else {
-            try {
-                Files.delete(gzipFile.toPath());
-            } catch (IOException e) {
-                throw new DeeplyTroublingException("Could not delete " + gzipFile.getAbsolutePath(), e);
-            }
+        try {
+            Files.delete(gzipFile.toPath());
+        } catch (IOException e) {
+            throw new DeeplyTroublingException("Could not delete " + gzipFile.getAbsolutePath(), e);
         }
         if (gzipFile.exists()) {
             System.out.println("File " + gzipFile.getAbsolutePath() + " could not be deleted. Deleting on exit.");
+            gzipFile.deleteOnExit();
         }
     }
 
