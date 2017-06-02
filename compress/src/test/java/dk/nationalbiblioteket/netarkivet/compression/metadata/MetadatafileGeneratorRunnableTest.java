@@ -21,7 +21,7 @@ public class MetadatafileGeneratorRunnableTest {
     static String working ="src/test/data/WORKING";
     static String IFILE_DIR = "src/test/data/WORKING/ifiles";
     static String Depth = "4";
-    static String INPUT_FILE = "src/test/data/WORKING/3-metadata-1.warc";
+    static String INPUT_FILE = "src/test/data/WORKING/3-metadata-1.warc.gz";
     static String NMETADATA_DIR = "output";
 
     @BeforeMethod
@@ -48,17 +48,19 @@ public class MetadatafileGeneratorRunnableTest {
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
         assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
+        assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
     }
 
     @Test
     public void testProcessArcFile() throws Exception {
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc");
-        File input = new File(INPUT_FILE);
+        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
+        File input = new File("src/test/data/WORKING/3-metadata-1.arc.gz");
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
         assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
+        assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
     }
 
 
