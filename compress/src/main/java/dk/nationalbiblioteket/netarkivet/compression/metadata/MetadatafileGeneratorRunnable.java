@@ -168,8 +168,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     }
                 } else {  //no payload
                     logger.debug("Writing empty record for {}.", url);
-                    writer.write(url, recordBase.getContentTypeStr(),
-                            recordBase.getIpAddress(), System.currentTimeMillis(), new byte[]{});
+                    writer.writeTo(oldPayloadFile, url, recordBase.getContentTypeStr());
                 }
                 oldPayloadFile.delete();
             }
@@ -235,6 +234,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         } else {
                             writer.writeTo(oldPayloadFile, valueOrNull(uriLine), valueOrNull(contentTypeLine));
                         }
+                    } else {
+                        writer.writeTo(oldPayloadFile, valueOrNull(uriLine), valueOrNull(contentTypeLine));
                     }
                     oldPayloadFile.delete();
                 }

@@ -1,7 +1,9 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
+import com.hp.gagawa.java.elements.Li;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.netarkivet.common.utils.FileUtils;
+import org.apache.commons.io.LineIterator;
 import org.archive.io.arc.ARCReaderFactory;
 import org.archive.io.warc.WARCReaderFactory;
 import org.testng.annotations.BeforeMethod;
@@ -37,6 +39,7 @@ public class MetadatafileGeneratorRunnableTest {
         Util.properties.put(Util.CDX_DEPTH, "0");
         Util.properties.put(Util.UPDATED_FILENAME_MD5_FILEPATH, NMETADATA_DIR + "/newchecksums");
         FileUtils.copyDirectory(new File(originals), new File(working));
+        org.apache.commons.io.FileUtils.deleteDirectory(new File(NMETADATA_DIR));
     }
 
     @Test
@@ -49,6 +52,37 @@ public class MetadatafileGeneratorRunnableTest {
         assertTrue(output.length() > 0);
         assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
         assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
+        Runtime.getRuntime().exec("gunzip " + output).waitFor();
+        File decompOutput = new File(new File(NMETADATA_DIR), "3-metadata-4.warc" );
+        LineIterator li = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
+        String str = "alerts.log";
+        boolean found = false;
+        int newWarcRecords = 0;
+        while (li.hasNext()) {
+            String line = li.next();
+            if (line.contains(str)) {
+                found = true;
+            }
+            if (line.contains("WARC-Type")) {
+                newWarcRecords++;
+            }
+        }
+        assertTrue(found, str + " should be found in " + decompOutput.getAbsolutePath());
+        input = new File(input.getParentFile(), "3-oldmetadata-1.warc.gz");
+        final File inputFile = new File(new File(NMETADATA_DIR), input.getName());
+        org.apache.commons.io.FileUtils.copyFile(input, inputFile);
+        Runtime.getRuntime().exec("gunzip " + inputFile.getAbsolutePath()).waitFor();
+        decompOutput = new File(inputFile.getParentFile(), "3-oldmetadata-1.warc");
+        int oldWarcRecords = 0;
+        li = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
+        while (li.hasNext()) {
+            String line = li.next();
+            if (line.contains("WARC-Type")) {
+                oldWarcRecords++;
+            }
+        }
+        assertEquals(newWarcRecords - oldWarcRecords, 2, "Expect two new records.");
+
     }
 
     @Test

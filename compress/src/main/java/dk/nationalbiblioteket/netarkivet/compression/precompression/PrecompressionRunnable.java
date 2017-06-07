@@ -234,8 +234,6 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             }
         } catch (IOException | NullPointerException e) {
             throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
-        } finally {
-
         }
     }
 
