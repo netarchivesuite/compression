@@ -3,6 +3,7 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnableTest;
 import org.apache.commons.io.FileUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Parameters;
@@ -25,12 +26,13 @@ public class PrecompressionRunnableTest {
 
     //File outputDir;
     //String inputFile = "src/test/data/456-foobar.warc";
-    String inputFile = "src/test/data/3-1-20161205101105604-00000-14970.arc";
+    String inputFile = "src/test/data/WORKING/3-1-20161205101105604-00000-14970.arc";
 
 
     @org.testng.annotations.BeforeMethod
     public void setUp() throws Exception {
-       cleanup();
+        cleanup();
+        MetadatafileGeneratorRunnableTest.setup();
     }
 
     @org.testng.annotations.AfterMethod
@@ -47,10 +49,10 @@ public class PrecompressionRunnableTest {
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
          File[] files = new File[]{
-                 new File("src/test/data/733-44-20101217211223-00007-sb-test-har-001.statsbiblioteket.dk.arc"),
-                 new File("src/test/data/3-1-20161205101105604-00000-14970.arc"),
-                 new File("src/test/data/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc"),
-                 new File("src/test/data/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc")
+                 new File("src/test/data/WORKING/733-44-20101217211223-00007-sb-test-har-001.statsbiblioteket.dk.arc"),
+                 new File("src/test/data/WORKING/3-1-20161205101105604-00000-14970.arc"),
+                 new File("src/test/data/WORKING/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc"),
+                 new File("src/test/data/WORKING/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc")
          };
         List<Object[]> list = new ArrayList<>();
         for (File file: files) {
