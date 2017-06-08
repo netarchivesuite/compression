@@ -101,9 +101,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         File cdxDir = Util.getCDXSubdir(inputFile.getName(), true);
         Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
         if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
-             processWarcfile(inputFile, outputFilePath.toFile(), cdxDir);
+            processWarcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
-             processArcfile(inputFile, outputFilePath.toFile(), cdxDir);
+            processArcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else {
             throw new WeirdFileException("Input metadata file is neither arc nor warc: " + filename);
         }
@@ -120,11 +120,13 @@ public class MetadatafileGeneratorRunnable implements Runnable {
 
     private void processArcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
-        MetadataFileWriter writer = MetadataFileWriterArc.createWriter(output);
-        InputStream is = new FileInputStream(input);
-        ArcReader reader = ArcReaderFactory.getReader(is);
-        final Iterator<ArcRecordBase> iterator = reader.iterator();
-        try {
+        MetadataFileWriter writer = null;
+        try (
+                InputStream is = new FileInputStream(input);
+                ArcReader reader = ArcReaderFactory.getReader(is);
+        ) {
+            final Iterator<ArcRecordBase> iterator = reader.iterator();
+            writer = MetadataFileWriterArc.createWriter(output);
             while (iterator.hasNext()) {
                 ArcRecordBase recordBase = iterator.next();
                 byte[] payload = new byte[]{};
@@ -162,7 +164,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         url = url.replace(".arc", ".arc.gz");
                         logger.debug("Writing {} bytes to migrated cdx for {}.", payload.length, output.getAbsolutePath());
                         writer.write(url, recordBase.getContentTypeStr(),
-                                                recordBase.getIpAddress(), System.currentTimeMillis(), payload);
+                                recordBase.getIpAddress(), System.currentTimeMillis(), payload);
                     } else {
                         writer.writeTo(oldPayloadFile, url, recordBase.getContentTypeStr());
                     }
@@ -173,17 +175,21 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 oldPayloadFile.delete();
             }
         } finally {
-            writer.close();
+            if (writer != null) {
+                writer.close();
+            }
         }
     }
 
     private void processWarcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
         logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
-        MetadataFileWriter writer = MetadataFileWriterWarc.createWriter(output);
-        InputStream is = new FileInputStream(input);
-        WarcReader reader = WarcReaderFactory.getReader(is);
-        final Iterator<WarcRecord> iterator = reader.iterator();
-        try {
+        MetadataFileWriter writer = null;
+        try (
+                InputStream is = new FileInputStream(input);
+                WarcReader reader = WarcReaderFactory.getReader(is);
+        ){
+            final Iterator<WarcRecord> iterator = reader.iterator();
+            writer = MetadataFileWriterWarc.createWriter(output);
             while (iterator.hasNext()) {
                 WarcRecord record = iterator.next();
                 if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("warcinfo")) {
@@ -210,7 +216,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         if (uriLine.value.contains("crawl.log")) {
                             byte[][] dedupPayload = null;
                             try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
-                                 dedupPayload = getDedupPayload(oldPayloadIS);
+                                dedupPayload = getDedupPayload(oldPayloadIS);
                             }
                             String dedupURI = "metadata://crawl/index/deduplicationmigration?majorversion=0&minorversion=0";
                             writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[0]);
@@ -241,7 +247,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 }
             }
         } finally {
-            writer.close();
+            if (writer != null) {
+                writer.close();
+            }
         }
     }
 
@@ -340,16 +348,16 @@ public class MetadatafileGeneratorRunnable implements Runnable {
 
     @Override
     public void run() {
-         while (!sharedQueue.isEmpty() && !isDead) {
-             String filename = null;
-             try {
-                 filename = sharedQueue.take();
-                 logger.info("Processing {} with thread {}.", filename, threadNo);
-                 processFile(filename);
-             } catch (Exception e) {
-                 logger.warn("Processing of {} threw an exception.", filename, e);
-             }
-         }
+        while (!sharedQueue.isEmpty() && !isDead) {
+            String filename = null;
+            try {
+                filename = sharedQueue.take();
+                logger.info("Processing {} with thread {}.", filename, threadNo);
+                processFile(filename);
+            } catch (Exception e) {
+                logger.warn("Processing of {} threw an exception.", filename, e);
+            }
+        }
         logger.info("Thread {} dying of natural causes.", threadNo);
     }
 

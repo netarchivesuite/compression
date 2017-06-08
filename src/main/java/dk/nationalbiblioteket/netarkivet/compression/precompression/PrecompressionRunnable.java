@@ -10,6 +10,7 @@ import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.logging.Level;
 
@@ -137,13 +138,13 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     private void checkConsistency(File inputFile, File gzipFile) throws DeeplyTroublingException {
         String nsha1;
         String osha1;
-        try {
-            osha1 = DigestUtils.sha1Hex(new FileInputStream(inputFile));
+        try (InputStream is = new FileInputStream(inputFile)) {
+            osha1 = DigestUtils.sha1Hex(is);
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
         }
-        try {
-            nsha1 = DigestUtils.sha1Hex(new GZIPInputStream(new FileInputStream(gzipFile)));
+        try (InputStream is = new GZIPInputStream(new FileInputStream(gzipFile))) {
+            nsha1 = DigestUtils.sha1Hex(is);
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
         }
