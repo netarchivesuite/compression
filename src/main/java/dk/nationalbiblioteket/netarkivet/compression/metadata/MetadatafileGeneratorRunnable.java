@@ -99,7 +99,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         final Path outputDirPath = Paths.get(outputDir);
         Files.createDirectories(outputDirPath);
         File cdxDir = Util.getCDXSubdir(inputFile.getName(), true);
-        Path outputFilePath = outputDirPath.resolve(Util.getNewMetadataFilename(filename));
+        final String newMetadataFilename = Util.getNewMetadataFilename(filename);
+        if (newMetadataFilename == null) {
+            throw new WeirdFileException("Cannot work out how to generate new metadata file name from " + filename);
+        }
+        Path outputFilePath = outputDirPath.resolve(newMetadataFilename);
         if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
             processWarcfile(inputFile, outputFilePath.toFile(), cdxDir);
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
