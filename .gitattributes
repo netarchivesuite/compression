@@ -1,0 +1,4 @@
+git lfs track "*.arc"
+git lfs track "*.warc"
+git lfs track "*.arc.gz"
+git lfs track "*.warc.gz"
