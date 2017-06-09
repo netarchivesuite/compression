@@ -24,7 +24,7 @@ public class IFileLoaderImpl implements IFileLoader {
                     throw new FileNotFoundException("No such file: " + ifile.getAbsolutePath());
                 }
                 try(InputStream is = new FileInputStream(ifile)) {
-                    for (Object lineO: IOUtils.readLines(is) ){
+                    for (Object lineO: IOUtils.readLines(is) ){ // TODO remove use of deprecated method
                         String[] line = ((String) lineO).trim().split("\\s");
                         newMap.put(Long.parseLong(line[0]), new IFileEntry(Long.parseLong(line[1]), line[2]));
                     }

@@ -265,7 +265,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } catch (CDXFormatException e) {
             throw new RuntimeException(e);
         }
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(cdxPayloadIS))) { // TODO eclipse complains about br not being closed here
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new InputStreamReader(cdxPayloadIS));
             boolean firstLine = true;
             String line;
             StringBuilder sb = new StringBuilder();
@@ -292,6 +294,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             return sb.toString().getBytes();
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
+        } finally {
+            IOUtils.closeQuietly(br);
         }
     }
 
