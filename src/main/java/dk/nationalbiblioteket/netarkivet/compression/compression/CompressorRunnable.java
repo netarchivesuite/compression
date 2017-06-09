@@ -70,7 +70,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         }
         boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
         if (!dryrun) {
-            inputFile.setWritable(true);
+            inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
             System.gc();
             inputFile.delete();
             if (inputFile.exists()) {

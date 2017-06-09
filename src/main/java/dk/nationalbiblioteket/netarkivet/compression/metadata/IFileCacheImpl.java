@@ -1,14 +1,7 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import org.apache.commons.io.IOUtils;
-
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;

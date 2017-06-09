@@ -1,14 +1,8 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.precompression.PrecompressionRunnable;
-import dk.netarkivet.common.utils.Settings;
-import dk.netarkivet.harvester.HarvesterSettings;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;

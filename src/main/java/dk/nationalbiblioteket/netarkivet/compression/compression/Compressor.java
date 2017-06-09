@@ -2,7 +2,6 @@ package dk.nationalbiblioteket.netarkivet.compression.compression;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import org.apache.commons.lang3.StringUtils;
-import org.jwat.tools.tasks.compress.CompressFile;
 
 import java.io.File;
 import java.io.IOException;

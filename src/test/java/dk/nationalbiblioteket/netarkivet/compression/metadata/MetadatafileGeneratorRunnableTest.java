@@ -1,6 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-import com.hp.gagawa.java.elements.Li;
+
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.netarkivet.common.utils.FileUtils;
 import org.apache.commons.io.LineIterator;

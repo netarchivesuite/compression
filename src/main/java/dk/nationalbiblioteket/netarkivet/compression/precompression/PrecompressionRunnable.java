@@ -8,13 +8,11 @@ import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.logging.Level;
 
-import org.apache.commons.io.output.NullOutputStream;
 import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.core.CaptureSearchResult;
@@ -40,8 +38,6 @@ import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 
 import java.lang.StringBuilder;
-
-import static java.lang.Thread.sleep;
 
 /**
  * Created by csr on 12/8/16.
@@ -70,7 +66,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     private UrlCanonicalizer canonicalizer = new AggressiveUrlCanonicalizer();
 
     private CloseableIterator<CaptureSearchResult> indexFile(String pathOrUrl) throws IOException {
-        CloseableIterator itr = null;
+        CloseableIterator<CaptureSearchResult> itr = null;
         if(pathOrUrl.endsWith(ARC_EXTENSION)) {
             itr = this.arcIndexer.iterator(pathOrUrl);
         } else if(pathOrUrl.endsWith(ARC_GZ_EXTENSION)) {

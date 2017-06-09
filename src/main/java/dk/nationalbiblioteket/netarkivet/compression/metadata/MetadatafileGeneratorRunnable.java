@@ -199,7 +199,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("warcinfo")) {
                     ANVLRecord infoPayload = new ANVLRecord();
                     infoPayload.addLabelValue("replaces", record.getHeader(WarcConstants.FN_WARC_FILENAME).value);
-                    infoPayload.addValue(IOUtils.toString(record.getPayloadContent()));
+                    infoPayload.addValue(IOUtils.toString(record.getPayloadContent())); // TODO IOUtils.toString(InputStream deprecated; use IOUtils.toString(InputStream,Charset) instead 
                     ((MetadataFileWriterWarc) writer).insertInfoRecord(infoPayload);
                 } else if (record.getHeader(WarcConstants.FN_WARC_TYPE).value.equals("resource")) {
                     final HeaderLine uriLine = record.getHeader(WarcConstants.FN_WARC_TARGET_URI);
@@ -265,7 +265,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         } catch (CDXFormatException e) {
             throw new RuntimeException(e);
         }
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(cdxPayloadIS))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(cdxPayloadIS))) { // TODO eclipse complains about br not being closed here
             boolean firstLine = true;
             String line;
             StringBuilder sb = new StringBuilder();
