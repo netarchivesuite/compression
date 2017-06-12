@@ -11,11 +11,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.InputStream;
 import java.util.Iterator;
-import java.util.logging.Level;
 
-import org.archive.util.iterator.CloseableIterator;
 import org.archive.wayback.UrlCanonicalizer;
-import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
@@ -34,7 +31,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.concurrent.BlockingQueue;
-import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 
 import java.lang.StringBuilder;
@@ -44,27 +40,29 @@ import java.lang.StringBuilder;
  */
 public class PrecompressionRunnable extends CompressFile implements Runnable {
 
-
+/*
     static {
         Logger logger = Logger.getLogger("org.archive.wayback.resourcestore.indexer");
         logger.setLevel(Level.WARNING);
     }
-
+*/
 
     private static boolean isDead = false;
     private static String errorMessage = null;
 
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
-
+/*
     public static final String ARC_EXTENSION = ".arc";
     public static final String ARC_GZ_EXTENSION = ".arc.gz";
     public static final String WARC_EXTENSION = ".warc";
     public static final String WARC_GZ_EXTENSION = ".warc.gz";
+ */   
     private ArcIndexer arcIndexer = new ArcIndexer();
     private WarcIndexer warcIndexer = new WarcIndexer();
     private UrlCanonicalizer canonicalizer = new AggressiveUrlCanonicalizer();
 
+    /*
     private CloseableIterator<CaptureSearchResult> indexFile(String pathOrUrl) throws IOException {
         CloseableIterator<CaptureSearchResult> itr = null;
         if(pathOrUrl.endsWith(ARC_EXTENSION)) {
@@ -78,7 +76,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
         return itr;
     }
-
+*/
     public PrecompressionRunnable(BlockingQueue<String> sharedQueue, int threadNo) {
         this.sharedQueue = sharedQueue;
         this.threadNo = threadNo;
@@ -151,7 +149,13 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new DeeplyTroublingException(message);
         }
     }
-
+    
+    /**
+     * Delete the given file
+     * @param gzipFile
+     * @param writeMD5
+     * @throws DeeplyTroublingException
+     */
     private void deleteFile(File gzipFile, boolean writeMD5) throws DeeplyTroublingException {
         if (writeMD5) {
             writeMD5(gzipFile);
@@ -239,6 +243,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             String filename = null;
             try {
                 filename = sharedQueue.take();
+                writeCompressionLog("Precompress of file " + filename + " started");
                 precompress(filename);
                 writeCompressionLog(filename + " processed successfully.");
             } catch (WeirdFileException we) {

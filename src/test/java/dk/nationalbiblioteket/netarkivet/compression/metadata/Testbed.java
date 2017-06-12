@@ -66,10 +66,11 @@ public class Testbed {
                 try {
                     payload = IOUtils.toByteArray(recordBase.getPayload().getInputStreamComplete());
                 } catch (IOException e) {
-                    System.out.println(e.getMessage());
+                    System.out.println(e.getMessage());                    
                 }
             }
         }
+        reader.close();
     }
 
     @Test

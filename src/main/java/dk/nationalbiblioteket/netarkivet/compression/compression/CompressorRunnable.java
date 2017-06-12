@@ -3,8 +3,10 @@ package dk.nationalbiblioteket.netarkivet.compression.compression;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.LineIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.jwat.tools.tasks.compress.CompressFile;
@@ -15,7 +17,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
+import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,18 +39,19 @@ public class CompressorRunnable extends CompressFile implements Runnable {
 
     private static synchronized void writeCompressionLog(String message) {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
+        String dateprefix = "[" +  new Date() + "] ";
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
-            writer.println(message);
+            writer.println(dateprefix + message);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * Compresses the file. Returns true if the file is compressed, false if it cannot be compressed for a well-understtod reason,
-     * throws an exception if it cannot be compressed for some other reason.
+     * Compresses the file. 
+     * Throws an exception if it cannot be compressed for some other reason.
      * @param filename
-     * @return
+     * @return true if the file is compressed, false if it cannot be compressed for a well-understood reason.
      * @throws DeeplyTroublingException
      * @throws WeirdFileException
      * @throws IOException
@@ -54,7 +59,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     public boolean compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
-            writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
+            writeCompressionLog(inputFile.getAbsolutePath() + " was not compressed. Is zero size file.");
             return false;
         }
         File gzipFile = doCompression(inputFile);
@@ -65,13 +70,18 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  File newFile = new File(gzipFile.getParentFile(), newName);
                  writeRename(gzipFile, newFile);
                  //Files.move(gzipFile.toPath(), newFile.toPath());
+                 // TODO shouldn't we check if this command is succeeds???
+                 //TODO Don't we need this for Linus also??
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
         }
         boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
         if (!dryrun) {
-            inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
-            System.gc();
+            boolean isWritable = inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
+            if (!isWritable) {
+                writeCompressionLog(inputFile.getAbsolutePath() + " not set to writable. Unknown reason");
+            }
+            System.gc(); // TODO What is this good for??
             inputFile.delete();
             if (inputFile.exists()) {
                 inputFile.deleteOnExit();
@@ -91,10 +101,14 @@ public class CompressorRunnable extends CompressFile implements Runnable {
 
     private static void validateMD5(File gzipFile) throws DeeplyTroublingException, IOException {
         String md5;
+        InputStream gzipFileStream = null;
         try {
-            md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
+            gzipFileStream = new FileInputStream(gzipFile);
+            md5 = DigestUtils.md5Hex(gzipFileStream);
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
+        } finally {
+            IOUtils.closeQuietly(gzipFileStream);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
         LineIterator lineIterator = FileUtils.lineIterator(new File(md5Filepath));
@@ -130,7 +144,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
         this.compressFile(inputFile, compressOptions);
         if (!gzipFile.exists()) {
-            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
+            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " was not created!");
         } else {
             return gzipFile;
         }
@@ -152,7 +166,9 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         while (!sharedQueue.isEmpty() && !isDead) {
             String filename = null;
             try {
+                writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size());
                 filename = sharedQueue.take();
+                writeCompressionLog("Compression of file  " + filename + " started");
                 if (compress(filename)) {
                     writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
                 }

@@ -115,15 +115,15 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         writeMD5UpdatedFilename(dest);
         writeMD5UpdatedFilename(outputFilePath.toFile());
         if (dest.length() >= outputFilePath.toFile().length()) {
-            logger.warn("Very suprised to find that new metadata file {} is smaller than old metadata file {}.", outputFilePath, dest.getAbsolutePath());
+            logger.warn("Very surprised to find that new metadata file {} is smaller than old metadata file {}.", outputFilePath, dest.getAbsolutePath());
         }
-        logger.trace("Done processing " + inputFile.getAbsolutePath());
+        logger.info("Finished done processing " + inputFile.getAbsolutePath());
         logger.trace(Util.getMemoryStats());
         return true;
     }
 
     private void processArcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
-        logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
+        logger.info("Processing ARC input file {} with outputfile {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = null;
         try (
                 InputStream is = new FileInputStream(input);
@@ -183,10 +183,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 writer.close();
             }
         }
+        logger.info("Finished processing ARC input file {}", input.getAbsolutePath());
     }
 
     private void processWarcfile(File input, File output, File cdxDir) throws IOException, DeeplyTroublingException {
-        logger.info("Processing from {} to {}.", input.getAbsolutePath(), output.getAbsolutePath());
+        logger.info("Processing WARC input file {} with outputfile {}.", input.getAbsolutePath(), output.getAbsolutePath());
         MetadataFileWriter writer = null;
         try (
                 InputStream is = new FileInputStream(input);
@@ -255,6 +256,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 writer.close();
             }
         }
+        logger.info("Finished processing WARC input file {}", input.getAbsolutePath());
     }
 
     private byte[] getUpdatedCdxPayload(InputStream cdxPayloadIS) throws DeeplyTroublingException, FileNotFoundException {
@@ -341,10 +343,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
 
     private static synchronized void writeMD5UpdatedFilename(File gzipFile) throws DeeplyTroublingException {
         String md5;
+        FileInputStream gzipfileInputStream = null;
         try {
-            md5 = DigestUtils.md5Hex(new FileInputStream(gzipFile));
+            gzipfileInputStream = new FileInputStream(gzipFile);
+            md5 = DigestUtils.md5Hex(gzipfileInputStream);
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
+        } finally {
+            IOUtils.closeQuietly(gzipfileInputStream);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.UPDATED_FILENAME_MD5_FILEPATH);
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(md5Filepath, true)))) {
@@ -360,13 +366,13 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             String filename = null;
             try {
                 filename = sharedQueue.take();
-                logger.info("Processing {} with thread {}.", filename, threadNo);
+                logger.info("Processing {} with thread {}. Left on queue: {}", filename, threadNo, sharedQueue.size());
                 processFile(filename);
             } catch (Exception e) {
                 logger.warn("Processing of {} threw an exception.", filename, e);
             }
         }
-        logger.info("Thread {} dying of natural causes.", threadNo);
+        logger.info("Thread {} died of natural causes.", threadNo);
     }
 
     public static String valueOrNull(HeaderLine line) {
