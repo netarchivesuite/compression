@@ -7,9 +7,11 @@ import java.io.FileInputStream;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+
 import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.InputStream;
+import java.util.Date;
 import java.util.Iterator;
 
 import org.archive.wayback.UrlCanonicalizer;
@@ -32,7 +34,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.concurrent.BlockingQueue;
 import java.util.zip.GZIPInputStream;
-
 import java.lang.StringBuilder;
 
 /**
@@ -40,43 +41,16 @@ import java.lang.StringBuilder;
  */
 public class PrecompressionRunnable extends CompressFile implements Runnable {
 
-/*
-    static {
-        Logger logger = Logger.getLogger("org.archive.wayback.resourcestore.indexer");
-        logger.setLevel(Level.WARNING);
-    }
-*/
-
     private static boolean isDead = false;
     private static String errorMessage = null;
 
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
-/*
-    public static final String ARC_EXTENSION = ".arc";
-    public static final String ARC_GZ_EXTENSION = ".arc.gz";
-    public static final String WARC_EXTENSION = ".warc";
-    public static final String WARC_GZ_EXTENSION = ".warc.gz";
- */   
+
     private ArcIndexer arcIndexer = new ArcIndexer();
     private WarcIndexer warcIndexer = new WarcIndexer();
     private UrlCanonicalizer canonicalizer = new AggressiveUrlCanonicalizer();
 
-    /*
-    private CloseableIterator<CaptureSearchResult> indexFile(String pathOrUrl) throws IOException {
-        CloseableIterator<CaptureSearchResult> itr = null;
-        if(pathOrUrl.endsWith(ARC_EXTENSION)) {
-            itr = this.arcIndexer.iterator(pathOrUrl);
-        } else if(pathOrUrl.endsWith(ARC_GZ_EXTENSION)) {
-            itr = this.arcIndexer.iterator(pathOrUrl);
-        } else if(pathOrUrl.endsWith(WARC_EXTENSION)) {
-            itr = this.warcIndexer.iterator(pathOrUrl);
-        } else if(pathOrUrl.endsWith(WARC_GZ_EXTENSION)) {
-            itr = this.warcIndexer.iterator(pathOrUrl);
-        }
-        return itr;
-    }
-*/
     public PrecompressionRunnable(BlockingQueue<String> sharedQueue, int threadNo) {
         this.sharedQueue = sharedQueue;
         this.threadNo = threadNo;
@@ -87,7 +61,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     public void precompress(String filename) throws DeeplyTroublingException, WeirdFileException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
-            writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.");
+            writeCompressionLog(inputFile.getAbsolutePath() + " not compressed. Zero size file.", threadNo);
             return;
         }
         File iFileSubdir = Util.getIFileSubdir(inputFile.getName(), true);
@@ -105,6 +79,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         } else {
             try {
                 //Create an empty file here as a placeholder to show that this input file has been processed.
+                writeCompressionLog("Writing empty ifile for compressed file " + gzipFile.getAbsolutePath(), threadNo);
                 iFile.createNewFile();
             } catch (IOException e) {
                 throw new DeeplyTroublingException("Could not create ifile " + iFile.getAbsolutePath());
@@ -206,12 +181,13 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
     }
 
-    private static synchronized void writeCompressionLog(String message) throws DeeplyTroublingException {
+    private static synchronized void writeCompressionLog(String message, int threadNo) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
+        String dateprefix = "[" +  new Date() + " (thread: " + threadNo + ")] ";
+        message = message + dateprefix;
         (new File(compressionLogPath)).getParentFile().mkdirs();
         writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
-
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws DeeplyTroublingException, WeirdFileException {
         CDXFormatter formatter = new CDXFormatter();
@@ -242,13 +218,14 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         while (!sharedQueue.isEmpty() && !isDead) {
             String filename = null;
             try {
+                writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size(), threadNo);
                 filename = sharedQueue.take();
-                writeCompressionLog("Precompress of file " + filename + " started");
+                writeCompressionLog("Precompress of file " + filename + " started. Left in queue: " + sharedQueue.size(), threadNo);
                 precompress(filename);
-                writeCompressionLog(filename + " processed successfully.");
+                writeCompressionLog(filename + " processed successfully.", threadNo);
             } catch (WeirdFileException we) {
                 try {
-                    writeCompressionLog(filename + " could not be processed.");
+                    writeCompressionLog(filename + " could not be processed.", threadNo);
                 } catch (DeeplyTroublingException e) {
                     // isDead = true;
                     errorMessage = e.getMessage();
@@ -259,7 +236,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
                 //isDead = true;
                 errorMessage = e.getMessage();
                 try {
-                    writeCompressionLog(filename + " not processed successfully " + errorMessage);
+                    writeCompressionLog(filename + " not processed successfully " + errorMessage, threadNo);
                 } catch (DeeplyTroublingException e1) {
                     throw new RuntimeException("Could not write compression log for " + filename ,  e1);
                 }

@@ -66,15 +66,16 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         validateMD5(gzipFile);
         if (System.getProperty("os.name").contains("Windows")){
              if (gzipFile.getName().contains("metadata")) {
-                 String newName = gzipFile.getName().replace("metadata", "oldmetadata");
+                 String newName = gzipFile.getName().replace("metadata", "oldmetadata"); 
                  File newFile = new File(gzipFile.getParentFile(), newName);
+                 writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath());
                  writeRename(gzipFile, newFile);
                  //Files.move(gzipFile.toPath(), newFile.toPath());
                  // TODO shouldn't we check if this command is succeeds???
                  //TODO Don't we need this for Linus also??
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
-        }
+        } 
         boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
         if (!dryrun) {
             boolean isWritable = inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
@@ -86,6 +87,8 @@ public class CompressorRunnable extends CompressFile implements Runnable {
             if (inputFile.exists()) {
                 inputFile.deleteOnExit();
             }
+        } else {
+            writeCompressionLog("Running in DRYRUN mode. No deletion of inputfile " +  inputFile.getAbsolutePath());
         }
         return true;
     }
@@ -168,7 +171,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
             try {
                 writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size());
                 filename = sharedQueue.take();
-                writeCompressionLog("Compression of file  " + filename + " started");
+                writeCompressionLog("Compression of file  " + filename + " started. Now files left in queue: " + sharedQueue.size());
                 if (compress(filename)) {
                     writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
                 }
