@@ -1,8 +1,11 @@
 package dk.nationalbiblioteket.netarkivet.compression;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -91,6 +94,32 @@ public class Util {
         Runtime runtime = Runtime.getRuntime();
         int mb = 1024*1024;
         return "Memory max/total/free (mb) = " + runtime.maxMemory()/mb + "/" + runtime.totalMemory()/mb + "/" + runtime.freeMemory()/mb ;
+    }
+    
+    public static synchronized void writeToFile(File file, String msg, int tries, long delay) throws DeeplyTroublingException {
+        String errMsg;
+        boolean done = false;
+        for (int i = 0; !done && i <= tries ; i++) {
+            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file, true)))) {
+                writer.println(msg);
+                done = true;
+            } catch (IOException e) {
+                errMsg = "Warning: Error writing to file " + file.getAbsolutePath();
+                if (i < tries) {
+                    System.out.println(errMsg);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e1) {
+                        throw new DeeplyTroublingException(e1);
+                    }
+                } else {
+                    throw new DeeplyTroublingException(e);
+                }
+            }
+        }
+    }
+    public static String getLogPath() {
+        return Util.getProperties().getProperty(Util.LOG);
     }
 
 }

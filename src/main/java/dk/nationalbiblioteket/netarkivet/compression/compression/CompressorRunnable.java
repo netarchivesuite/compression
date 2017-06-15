@@ -38,7 +38,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     }
 
     private static synchronized void writeCompressionLog(String message, int threadNo) {
-        String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
+        String compressionLogPath = Util.getLogPath();
         String dateprefix = "[" +  new Date() + "(thread: "+ threadNo  +") ] ";
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
             writer.println(dateprefix + message);

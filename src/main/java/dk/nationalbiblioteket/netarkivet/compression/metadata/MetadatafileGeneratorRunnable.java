@@ -365,9 +365,13 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         while (!sharedQueue.isEmpty() && !isDead) {
             String filename = null;
             try {
-                filename = sharedQueue.take();
-                logger.info("Processing {} with thread {}. Left on queue: {}", filename, threadNo, sharedQueue.size());
-                processFile(filename);
+                filename = sharedQueue.poll();
+                if (filename != null) {
+                    logger.info("Processing {} with thread {}. Left on queue: {}", filename, threadNo, sharedQueue.size());
+                    processFile(filename);
+                } else {
+                    logger.info("Sharedqueue should now be empty, and the processing of thread {} is done. queue size:{}", threadNo, sharedQueue.size());
+                }
             } catch (Exception e) {
                 logger.warn("Processing of {} threw an exception.", filename, e);
             }

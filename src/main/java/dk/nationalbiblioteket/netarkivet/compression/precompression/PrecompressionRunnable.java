@@ -155,38 +155,17 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new DeeplyTroublingException(e);
         }
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
-        writeToFile(new File(md5Filepath), gzipFile.getName() + "##" + md5, 5, 1000L);
+        Util.writeToFile(new File(md5Filepath), gzipFile.getName() + "##" + md5, 5, 1000L);
     }
 
-    private static synchronized void writeToFile(File file, String msg, int tries, long delay) throws DeeplyTroublingException {
-        String errMsg;
-        boolean done = false;
-        for (int i = 0; !done && i <= tries ; i++) {
-            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file, true)))) {
-                writer.println(msg);
-                done = true;
-            } catch (IOException e) {
-                errMsg = "Warning: Error writing to file " + file.getAbsolutePath();
-                if (i < tries) {
-                    System.out.println(errMsg);
-                    try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e1) {
-                        throw new DeeplyTroublingException(e1);
-                    }
-                } else {
-                    throw new DeeplyTroublingException(e);
-                }
-            }
-        }
-    }
+    
 
     private static synchronized void writeCompressionLog(String message, int threadNo) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         String dateprefix = "[" +  new Date() + " (thread: " + threadNo + ")] ";
         message = dateprefix + message; 
         (new File(compressionLogPath)).getParentFile().mkdirs();
-        writeToFile(new File(compressionLogPath), message, 5, 1000L);
+        Util.writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws DeeplyTroublingException, WeirdFileException {
