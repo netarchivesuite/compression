@@ -96,6 +96,9 @@ public class MetadatafileGeneratorRunnableTest {
         assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
         assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
     }
+    
+    
+    
 
 
 

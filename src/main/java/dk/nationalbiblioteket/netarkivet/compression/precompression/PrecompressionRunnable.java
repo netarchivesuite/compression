@@ -42,7 +42,7 @@ import java.lang.StringBuilder;
 public class PrecompressionRunnable extends CompressFile implements Runnable {
 
     private static boolean isDead = false;
-    private static String errorMessage = null;
+    private static Throwable error = null;
 
     private final BlockingQueue<String> sharedQueue;
     private int threadNo;
@@ -184,7 +184,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     private static synchronized void writeCompressionLog(String message, int threadNo) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         String dateprefix = "[" +  new Date() + " (thread: " + threadNo + ")] ";
-        message = message + dateprefix;
+        message = dateprefix + message; 
         (new File(compressionLogPath)).getParentFile().mkdirs();
         writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
@@ -219,28 +219,31 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             String filename = null;
             try {
                 writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size(), threadNo);
-                filename = sharedQueue.take();
-                writeCompressionLog("Precompress of file " + filename + " started. Left in queue: " + sharedQueue.size(), threadNo);
-                precompress(filename);
-                writeCompressionLog(filename + " processed successfully.", threadNo);
+                filename = sharedQueue.poll();
+                if (filename != null) { 
+                    writeCompressionLog("Precompress of file " + filename + " started. Left in queue: " + sharedQueue.size(), threadNo);
+                    precompress(filename);
+                    writeCompressionLog(filename + " processed successfully.", threadNo);
+                } else {
+                    writeCompressionLog("Queue seems to be empty now. Nothing more to do.", threadNo);
+                }
             } catch (WeirdFileException we) {
                 try {
                     writeCompressionLog(filename + " could not be processed.", threadNo);
                 } catch (DeeplyTroublingException e) {
                     // isDead = true;
-                    errorMessage = e.getMessage();
+                    error = e;
                     throw new RuntimeException("Could not write log entry for " + filename, e);
                 }
-            } catch (DeeplyTroublingException | InterruptedException e) {
+            } catch (DeeplyTroublingException e) {
                 //Mark as dead and let this thread die.
                 //isDead = true;
-                errorMessage = e.getMessage();
+                error = e;
                 try {
-                    writeCompressionLog(filename + " not processed successfully " + errorMessage, threadNo);
+                    writeCompressionLog(filename + " not processed successfully. Cause: " + error, threadNo);
                 } catch (DeeplyTroublingException e1) {
                     throw new RuntimeException("Could not write compression log for " + filename ,  e1);
                 }
-                //throw new RuntimeException(e);
             }
         }
     }

@@ -37,9 +37,9 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         logger.setLevel(Level.WARNING);
     }
 
-    private static synchronized void writeCompressionLog(String message) {
+    private static synchronized void writeCompressionLog(String message, int threadNo) {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
-        String dateprefix = "[" +  new Date() + "] ";
+        String dateprefix = "[" +  new Date() + "(thread: "+ threadNo  +") ] ";
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(compressionLogPath, true)))) {
             writer.println(dateprefix + message);
         } catch (IOException e) {
@@ -59,7 +59,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
     public boolean compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
         File inputFile = new File(filename);
         if (inputFile.length() == 0) {
-            writeCompressionLog(inputFile.getAbsolutePath() + " was not compressed. Is zero size file.");
+            writeCompressionLog(inputFile.getAbsolutePath() + " was not compressed. Is zero size file.", threadNo);
             return false;
         }
         File gzipFile = doCompression(inputFile);
@@ -68,7 +68,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
              if (gzipFile.getName().contains("metadata")) {
                  String newName = gzipFile.getName().replace("metadata", "oldmetadata"); 
                  File newFile = new File(gzipFile.getParentFile(), newName);
-                 writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath());
+                 writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath(),threadNo);
                  writeRename(gzipFile, newFile);
                  //Files.move(gzipFile.toPath(), newFile.toPath());
                  // TODO shouldn't we check if this command is succeeds???
@@ -80,7 +80,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         if (!dryrun) {
             boolean isWritable = inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
             if (!isWritable) {
-                writeCompressionLog(inputFile.getAbsolutePath() + " not set to writable. Unknown reason");
+                writeCompressionLog(inputFile.getAbsolutePath() + " not set to writable. Unknown reason", threadNo);
             }
             System.gc(); // TODO What is this good for??
             inputFile.delete();
@@ -88,7 +88,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                 inputFile.deleteOnExit();
             }
         } else {
-            writeCompressionLog("Running in DRYRUN mode. No deletion of inputfile " +  inputFile.getAbsolutePath());
+            writeCompressionLog("Running in DRYRUN mode. No deletion of inputfile " +  inputFile.getAbsolutePath(), threadNo);
         }
         return true;
     }
@@ -169,15 +169,19 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         while (!sharedQueue.isEmpty() && !isDead) {
             String filename = null;
             try {
-                writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size());
-                filename = sharedQueue.take();
-                writeCompressionLog("Compression of file  " + filename + " started. Now files left in queue: " + sharedQueue.size());
-                if (compress(filename)) {
-                    writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath());
+                writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size(), threadNo);
+                filename = sharedQueue.poll();
+                if (filename != null){
+                    writeCompressionLog("Compression of file  " + filename + " started. Now files left in queue: " + sharedQueue.size(), threadNo);
+                    if (compress(filename)) {
+                        writeCompressionLog("Compressed " + filename + " to " + getOutputGzipFile(new File(filename)).getAbsolutePath(), threadNo);
+                    }
+                } else {
+                    writeCompressionLog("Queue seems to be empty now. Nothing more to do.", threadNo);
                 }
             } catch (Exception e) {
                 isDead = true;
-                writeCompressionLog("Failed to compress " + filename + " " + e.getMessage());
+                writeCompressionLog("Failed to compress " + filename + ".Cause: " + e, threadNo);
                 throw new RuntimeException(e);
             }
         }
