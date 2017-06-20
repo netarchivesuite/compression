@@ -26,7 +26,7 @@ public class IFileLoaderImpl implements IFileLoader {
                 try(InputStream is = new FileInputStream(ifile)) {
                     for (Object lineO: IOUtils.readLines(is) ){ // TODO remove use of deprecated method
                         String[] line = ((String) lineO).trim().split("\\s");
-                        newMap.put(Long.parseLong(line[0]), new IFileEntry(Long.parseLong(line[1]), line[2]));
+                        newMap.put(Long.parseLong(line[0]), new IFileEntry(Long.parseLong(line[1]), Long.parseLong(line[2])));
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);

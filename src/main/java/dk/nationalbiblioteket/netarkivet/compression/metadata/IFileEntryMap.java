@@ -17,7 +17,7 @@ public class IFileEntryMap extends TriLongListMap<IFileEntry> {
 
     @Override
     protected IFileEntry valuesToObject(long value1, long value2) {
-        return new IFileEntry(value1, Long.toString(value2));
+        return new IFileEntry(value1, value2);
     }
 
     @Override
@@ -27,6 +27,6 @@ public class IFileEntryMap extends TriLongListMap<IFileEntry> {
 
     @Override
     protected long objectToValue2(IFileEntry object) {
-        return Long.parseLong(object.getValue());
+        return object.getValue();
     }
 }
