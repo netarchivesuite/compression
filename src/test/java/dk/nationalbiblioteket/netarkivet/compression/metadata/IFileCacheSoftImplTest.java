@@ -1,13 +1,15 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileCacheSoftApacheImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoader;
 
 import java.io.FileNotFoundException;
 import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
-
 
 /**
  * Created by csr on 5/22/17.
@@ -25,7 +27,7 @@ public class IFileCacheSoftImplTest {
             ConcurrentSkipListMap<Long, IFileEntry> iFileMap = new ConcurrentSkipListMap<>();
             Random random = new Random();
             for (int i=0; i<MAP_SIZE; i++) {
-                iFileMap.put(random.nextLong(), new IFileEntry(random.nextLong(), "foobar"));
+                iFileMap.put(random.nextLong(), new IFileEntry(random.nextLong(), random.nextLong()));
             }
             return iFileMap;
         }

@@ -4,6 +4,10 @@ import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import dk.nationalbiblioteket.netarkivet.compression.tools.ValidateMetadataOutput;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCacheFactory;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoaderImpl;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
@@ -345,24 +349,26 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             String line;
             StringBuilder sb = new StringBuilder();
             while ((line = br.readLine()) != null && line.trim().length() > 0) {
-                CaptureSearchResult captureSearchResult = null;
                 try {
+                    CaptureSearchResult captureSearchResult = null;
                     captureSearchResult = cdxFormat.parseResult(line);
-                } catch (CDXFormatException e) {
-                    throw new RuntimeException("Cannot parse " + line);
+
+                    String file = captureSearchResult.getFile();
+                    long oldOffset = captureSearchResult.getOffset();
+                    //IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+                    IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
+                    IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
+                    captureSearchResult.setOffset(iFileEntry.getNewOffset());
+                    captureSearchResult.setFile(file + ".gz");
+                    line = cdxFormat.serializeResult(captureSearchResult);
+                    if (!firstLine) {
+                        sb.append("\n");
+                    }
+                    sb.append(line);
+                    firstLine = false;
+                } catch (Exception e) {
+                    logger.warn("Error processing '" + line + "'", e);
                 }
-                String file = captureSearchResult.getFile();
-                long oldOffset = captureSearchResult.getOffset();
-                IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
-                IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
-                captureSearchResult.setOffset(iFileEntry.getNewOffset());
-                captureSearchResult.setFile(file + ".gz");
-                line = cdxFormat.serializeResult(captureSearchResult);
-                if (!firstLine) {
-                    sb.append("\n");
-                }
-                sb.append(line);
-                firstLine = false;
             }
             return sb.toString().getBytes();
         } catch (IOException e) {
@@ -378,7 +384,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
      * @throws DeeplyTroublingException
      */
     private byte[][] getDedupPayload(InputStream crawllogPayloadIS) throws DeeplyTroublingException {
-        final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+        //final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+        final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
         StringBuffer migrationOutput = new StringBuffer();
         StringBuffer cdxOutput = new StringBuffer();
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
@@ -399,7 +406,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             String filename = split[8];
                             String offset = split[7];
                             IFileEntry iFileEntry = iFileCache.getIFileEntry(filename, Long.parseLong(offset));
-                            migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset());
+                            migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append(' ').append(iFileEntry.getTimestamp());
                             split[8] = filename + ".gz";
                             split[7] = "" + iFileEntry.getNewOffset();
                             cdxOutput.append(StringUtils.join(split, ' '));

@@ -124,7 +124,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new DeeplyTroublingException(message);
         }
     }
-    
+
     /**
      * Delete the given file
      * @param gzipFile
@@ -161,7 +161,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     private static synchronized void writeCompressionLog(String message, int threadNo) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         String dateprefix = "[" +  new Date() + " (thread: " + threadNo + ")] ";
-        message = dateprefix + message; 
+        message = dateprefix + message;
         (new File(compressionLogPath)).getParentFile().mkdirs();
         Util.writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
@@ -197,7 +197,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             try {
                 writeCompressionLog("Files left in the sharedQueue: " + sharedQueue.size(), threadNo);
                 filename = sharedQueue.poll();
-                if (filename != null) { 
+                if (filename != null) {
                     writeCompressionLog("Precompress of file " + filename + " started. Left in queue: " + sharedQueue.size(), threadNo);
                     precompress(filename);
                     writeCompressionLog(filename + " processed successfully.", threadNo);
@@ -330,5 +330,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         return sb.toString();
     }
 
+    private static class DEBUG {
+    }
 }
 

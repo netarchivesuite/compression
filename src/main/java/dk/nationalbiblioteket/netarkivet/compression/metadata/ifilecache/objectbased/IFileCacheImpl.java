@@ -1,6 +1,8 @@
-package dk.nationalbiblioteket.netarkivet.compression.metadata;
+package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
+
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.Map;

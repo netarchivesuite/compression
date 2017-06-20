@@ -3,13 +3,17 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnable;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnableTest;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -28,14 +32,15 @@ public class PrecompressionRunnableTest {
     //String inputFile = "src/test/data/456-foobar.warc";
     String inputFile = "src/test/data/WORKING/3-1-20161205101105604-00000-14970.arc";
 
+    Logger logger = LoggerFactory.getLogger(PrecompressionRunnableTest.class);
 
-    @org.testng.annotations.BeforeMethod
+    @org.testng.annotations.BeforeClass
     public void setUp() throws Exception {
         cleanup();
         MetadatafileGeneratorRunnableTest.setup();
     }
 
-    @org.testng.annotations.AfterMethod
+    @org.testng.annotations.AfterClass
     public void tearDown() throws Exception {
         cleanup();
     }
@@ -48,12 +53,20 @@ public class PrecompressionRunnableTest {
 
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
-         File[] files = new File[]{
+        File[] files = new File("src/test/data/WORKING/precompress").listFiles((dir, name) -> {
+            return name.endsWith("arc");
+        }) ;
+
+/*         File[] files = new File[]{
+                 new File("src/test/data/WORKING/4868-metadata-1.arc"),
+                 new File("src/test/data/WORKING/4868-metadata-2.arc"),
+                 new File("src/test/data/WORKING/4868-metadata-3.arc"),
+                 new File("src/test/data/WORKING/1545-metadata-2.arc"),
                  new File("src/test/data/WORKING/733-44-20101217211223-00007-sb-test-har-001.statsbiblioteket.dk.arc"),
                  new File("src/test/data/WORKING/3-1-20161205101105604-00000-14970.arc"),
                  new File("src/test/data/WORKING/1185-77-20110304134905-00003-kb-test-har-002.kb.dk.arc"),
                  new File("src/test/data/WORKING/2-2-20161205125206020-00000-kb-test-har-004.kb.dk.warc")
-         };
+         };*/
         List<Object[]> list = new ArrayList<>();
         for (File file: files) {
             list.add(new File[]{file});
@@ -79,7 +92,8 @@ public class PrecompressionRunnableTest {
         PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
         consumer.precompress(inputFile.getAbsolutePath());
         assertTrue(ifile.exists(), ifile.getAbsolutePath() + " should exist.");
-        assertTrue(FileUtils.readLines(ifile).size() > 10);
+        boolean isMetadata = inputFile.getName().contains("metadata");
+        assertTrue( (isMetadata && ifile.length()==0) || FileUtils.readLines(ifile).size() > 10);
     }
 
 }

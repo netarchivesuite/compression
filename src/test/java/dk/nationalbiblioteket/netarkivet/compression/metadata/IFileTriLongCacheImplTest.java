@@ -1,19 +1,19 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileCacheImpl;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoaderImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileCacheSoftLongArrays;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoaderImpl;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.Properties;
 
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
 
 /**
  * Created by csr on 12/22/16.
  */
-public class IFileCacheImplTest {
+public class IFileTriLongCacheImplTest {
 
     @BeforeMethod
     public void setup() throws Exception {
@@ -27,7 +27,7 @@ public class IFileCacheImplTest {
         Util.properties.put(Util.IFILE_DEPTH, "2");
         Util.properties.put(Util.TEMP_DIR, "/tmp");
         Util.properties.put(Util.CACHE_SIZE, "2");
-        IFileCacheImpl cache = IFileCacheImpl.getIFileCacheImpl(new IFileLoaderImpl());
+        IFileCacheSoftLongArrays cache = IFileCacheSoftLongArrays.getIFileCacheSoftApacheImpl(new IFileTriLongLoaderImpl());
         assertEquals(cache.getIFileEntry("37-testfile.arc", 1500L).getNewOffset().longValue(), 1200L);
         assertEquals(cache.getIFileEntry("2-testfile.arc", 1000L).getNewOffset().longValue(), 500L);
         assertEquals(cache.getIFileEntry("371-testfile.arc", 3500L).getNewOffset().longValue(), 2700L);
