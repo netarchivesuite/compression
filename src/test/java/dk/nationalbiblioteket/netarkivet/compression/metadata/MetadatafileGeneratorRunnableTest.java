@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.StreamSupport;
 
 import static org.testng.Assert.*;
 
@@ -74,6 +77,7 @@ public class MetadatafileGeneratorRunnableTest {
         metadatafileGeneratorRunnable.processFile(inputFile.getAbsolutePath());
         String path = inputFile.getAbsolutePath();
         path = path.replace("1.arc.gz", "4.arc.gz");
+        path = path.replace("2.arc.gz", "4.arc.gz");
         path = path.replace("1.warc.gz", "4.warc.gz");
         File output = new File(new File(NMETADATA_DIR), new File(path).getName());
         assertTrue(output.exists(), output.getAbsolutePath() + " should exist");
@@ -82,6 +86,28 @@ public class MetadatafileGeneratorRunnableTest {
         assertTrue(output.length() > inputFile.length(), "Expect output file to be larger than input file.");
         Runtime.getRuntime().exec("gunzip " + output).waitFor();
         File decompOutput = new File(output.getAbsolutePath().replace(".gz", ""));
+        inputFile = new File(inputFile.getParentFile(), inputFile.getName().replace("metadata", "oldmetadata"));
+        File compInput = new File(new File(NMETADATA_DIR), inputFile.getName());
+        org.apache.commons.io.FileUtils.copyFile(inputFile, compInput);
+        Runtime.getRuntime().exec("gunzip " + compInput.getAbsolutePath()).waitFor();
+        File decompInput = new File(compInput.getAbsolutePath().replace(".gz", ""));
+        if (inputFile.getName().endsWith("warc.gz")) {
+            checkWarc(decompInput, decompOutput);
+        } else {
+            checkArc(decompInput, decompOutput);
+        }
+        System.out.println(Util.getMemoryStats());
+    }
+
+    private void checkArc(File decompInput, File decompOutput) throws IOException {
+        LineIterator outputLI = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
+        LineIterator inputLI = org.apache.commons.io.FileUtils.lineIterator(decompInput);
+        long inputCount = StreamSupport.stream(Spliterators.spliteratorUnknownSize(inputLI, Spliterator.ORDERED), false).filter(line -> line.contains("metadata://")).count();
+        long outputCount = StreamSupport.stream(Spliterators.spliteratorUnknownSize(outputLI, Spliterator.ORDERED), false).filter(line -> line.contains("metadata://")).count();
+        assertEquals(outputCount-inputCount, 2L);
+    }
+
+    private void checkWarc(File decompInput, File decompOutput) throws IOException {
         LineIterator li = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
         String str = "alerts.log";
         boolean found = false;
@@ -96,11 +122,6 @@ public class MetadatafileGeneratorRunnableTest {
             }
         }
         // assertTrue(found, str + " should be found in " + decompOutput.getAbsolutePath());
-        inputFile = new File(inputFile.getParentFile(), inputFile.getName().replace("metadata", "oldmetadata"));
-        File compInput = new File(new File(NMETADATA_DIR), inputFile.getName());
-        org.apache.commons.io.FileUtils.copyFile(inputFile, compInput);
-        Runtime.getRuntime().exec("gunzip " + compInput.getAbsolutePath()).waitFor();
-        File decompInput = new File(compInput.getAbsolutePath().replace(".gz", ""));
         int oldWarcRecords = 0;
         li = org.apache.commons.io.FileUtils.lineIterator(decompInput);
         while (li.hasNext()) {
@@ -110,75 +131,6 @@ public class MetadatafileGeneratorRunnableTest {
             }
         }
         assertEquals(newWarcRecords - oldWarcRecords, 2, "Expect two new records.");
-        System.out.println(Util.getMemoryStats());
-    }
-
-    @Test
-    public void testProcessWarcFile() throws Exception {
-        MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile(INPUT_FILE);
-        File input = new File(INPUT_FILE);
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.warc.gz" );
-        assertTrue(output.exists());
-        assertTrue(output.length() > 0);
-        assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
-        assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
-        Runtime.getRuntime().exec("gunzip " + output).waitFor();
-        File decompOutput = new File(new File(NMETADATA_DIR), "3-metadata-4.warc" );
-        LineIterator li = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
-        String str = "alerts.log";
-        boolean found = false;
-        int newWarcRecords = 0;
-        while (li.hasNext()) {
-            String line = li.next();
-            if (line.contains(str)) {
-                found = true;
-            }
-            if (line.contains("WARC-Type")) {
-                newWarcRecords++;
-            }
-        }
-        assertTrue(found, str + " should be found in " + decompOutput.getAbsolutePath());
-        input = new File(input.getParentFile(), "3-oldmetadata-1.warc.gz");
-        final File inputFile = new File(new File(NMETADATA_DIR), input.getName());
-        org.apache.commons.io.FileUtils.copyFile(input, inputFile);
-        Runtime.getRuntime().exec("gunzip " + inputFile.getAbsolutePath()).waitFor();
-        decompOutput = new File(inputFile.getParentFile(), "3-oldmetadata-1.warc");
-        int oldWarcRecords = 0;
-        li = org.apache.commons.io.FileUtils.lineIterator(decompOutput);
-        while (li.hasNext()) {
-            String line = li.next();
-            if (line.contains("WARC-Type")) {
-                oldWarcRecords++;
-            }
-        }
-        assertEquals(newWarcRecords - oldWarcRecords, 2, "Expect two new records.");
-    }
-
-    @Test
-    public void testProcessArcFile() throws Exception {
-        MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
-        File input = new File("src/test/data/WORKING/3-metadata-1.arc.gz");
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
-        assertTrue(output.exists());
-        assertTrue(output.length() > 0);
-        assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
-        assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
-    }
-
-
-    @Test
-    public void testProcessArcFileGen2() throws Exception {
-        String inputPath = "src/test/data/WORKING/1545-metadata-2.arc.gz";
-        MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile(inputPath);
-        File input = new File(inputPath);
-        File output = new File(new File(NMETADATA_DIR),  "1545-metadata-4.arc.gz");
-        assertTrue(output.exists());
-        assertTrue(output.length() > 0);
-        assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
-        assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
     }
 
 
