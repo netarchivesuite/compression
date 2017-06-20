@@ -68,7 +68,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         File cdxSubdir = Util.getCDXSubdir(inputFile.getName(), true);
         File iFile = new File(iFileSubdir, inputFile.getName() + ".ifile.cdx");
         if (iFile.exists()) {
-            System.out.println("File " + iFile.getAbsolutePath() + " already exists so not reprocessing.");
+            System.out.println("Thread # " + threadNo + ": File " + iFile.getAbsolutePath() + " already exists so skipping");
             return;
         }
         File gzipFile = doCompression(inputFile);
@@ -118,7 +118,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new DeeplyTroublingException(e);
         }
         if (!nsha1.equals(osha1)) {
-            final String message = "Checksum mismatch between " + inputFile.getAbsolutePath()
+            final String message = "Thread # " + threadNo + ": Checksum mismatch between " + inputFile.getAbsolutePath()
                     + " and " + gzipFile.getAbsolutePath() + " " + osha1 + " " + nsha1;
             deleteFile(gzipFile, false);
             throw new DeeplyTroublingException(message);
@@ -142,7 +142,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             throw new DeeplyTroublingException("Could not delete " + gzipFile.getAbsolutePath(), e);
         }
         if (gzipFile.exists()) {
-            System.out.println("File " + gzipFile.getAbsolutePath() + " could not be deleted. Deleting on exit.");
+            System.out.println("Thread # " + threadNo + ": File " + gzipFile.getAbsolutePath() + " could not be deleted. Deleting on exit.");
             gzipFile.deleteOnExit();
         }
     }
@@ -157,9 +157,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         String md5Filepath = Util.getProperties().getProperty(Util.MD5_FILEPATH);
         Util.writeToFile(new File(md5Filepath), gzipFile.getName() + "##" + md5, 5, 1000L);
     }
-
     
-
     private static synchronized void writeCompressionLog(String message, int threadNo) throws DeeplyTroublingException {
         String compressionLogPath = Util.getProperties().getProperty(Util.LOG);
         String dateprefix = "[" +  new Date() + " (thread: " + threadNo + ")] ";

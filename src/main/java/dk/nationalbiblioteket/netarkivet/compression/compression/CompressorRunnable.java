@@ -75,14 +75,18 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  //TODO Don't we need this for Linus also??
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
-        } 
+        } else {
+            writeCompressionLog("ERROR: rename not implemented for linux", threadNo);
+        }
+        
+        
         boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
         if (!dryrun) {
-            boolean isWritable = inputFile.setWritable(true); // TODO shouldn't we check if this command was successful
+            boolean isWritable = inputFile.setWritable(true);
             if (!isWritable) {
                 writeCompressionLog(inputFile.getAbsolutePath() + " not set to writable. Unknown reason", threadNo);
             }
-            System.gc(); // TODO What is this good for??
+            System.gc(); // FIXME What is this good for??
             inputFile.delete();
             if (inputFile.exists()) {
                 inputFile.deleteOnExit();
@@ -161,7 +165,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         } else {
             outputDir = new File(outputDirString);
         }
-        return new File (outputDir, inputFile.getName() + ".gz");
+        return new File(outputDir, inputFile.getName() + ".gz");
     }
 
     @Override

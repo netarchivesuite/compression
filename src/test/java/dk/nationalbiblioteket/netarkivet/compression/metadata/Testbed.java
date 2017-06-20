@@ -60,7 +60,7 @@ public class Testbed {
         final Iterator<ArcRecordBase> iterator = reader.iterator();
         while (iterator.hasNext()) {
             ArcRecordBase recordBase = iterator.next();
-            System.out.println("Reading record " + recordBase.getUrlStr());
+            //System.out.println("Reading record " + recordBase.getUrlStr());
             byte[] payload = new byte[]{};
             if (recordBase.hasPayload()) {
                 try {

@@ -1,8 +1,14 @@
 package dk.nationalbiblioteket.netarkivet.compression.tools;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
 import org.archive.io.ArchiveRecord;
@@ -10,6 +16,12 @@ import org.archive.io.arc.ARCReader;
 import org.archive.io.arc.ARCReaderFactory;
 import org.archive.io.warc.WARCReader;
 import org.archive.io.warc.WARCReaderFactory;
+
+import dk.netarkivet.common.utils.FileUtils;
+import dk.netarkivet.common.utils.archive.GetMetadataArchiveBatchJob;
+import dk.netarkivet.common.utils.batch.BatchLocalFiles;
+import dk.netarkivet.common.utils.batch.FileBatchJob;
+import dk.netarkivet.harvester.harvesting.metadata.MetadataFile;
 
 public class ValidateMetadataOutput {
 
@@ -83,4 +95,65 @@ public class ValidateMetadataOutput {
         }
         return count;
     }
+
+    public static int getRecordDiff(File originalMetadataFile,
+            File newMetadataFile) {
+        return getRecordCount(newMetadataFile) - getRecordCount(originalMetadataFile);
+    }
+    
+    public static int findDuplicateLinesInCrawlog(File originalMetadataFile) throws IOException {
+        BatchLocalFiles files = new BatchLocalFiles(new File[]{originalMetadataFile});
+        File resultFile = File.createTempFile("batch", ".txt");
+        OutputStream os = new FileOutputStream(resultFile);
+        Pattern CrawlLogUrlpattern = Pattern.compile(MetadataFile.CRAWL_LOG_PATTERN);
+        Pattern textPlainMimepattern = Pattern.compile("text/plain");
+
+        FileBatchJob job = new GetMetadataArchiveBatchJob(CrawlLogUrlpattern, textPlainMimepattern); 
+        files.run(job, os);
+        //Find duplicate annotations in log
+        BufferedReader br = null;
+        int duplicateLines = 0;
+        try {
+            br = new BufferedReader(new FileReader(resultFile));
+            String line = null;  
+            while ((line = br.readLine()) != null)  {  
+                if (line.contains("duplicate:")) {
+                    duplicateLines++;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            IOUtils.closeQuietly(br);
+        }
+        return duplicateLines;
+    }
+    
+    /**
+     * 
+     * @param originalMetadataFile
+     * @param newMetadataFile
+     * @param dedupCdxFile
+     * @return
+     * @throws IOException 
+     */
+    public static boolean compareCrawllogWithDedupcdxfile(File originalMetadataFile, File newMetadataFile, File dedupCdxFile) throws IOException {
+        int duplicateLinesInOriginal = findDuplicateLinesInCrawlog(originalMetadataFile);
+        System.out.println("crawlog duplicateLines in original: " + duplicateLinesInOriginal);
+        int duplicateLinesInNew = findDuplicateLinesInCrawlog(newMetadataFile);
+        System.out.println("crawlog duplicateLines in new: " + duplicateLinesInNew);
+/*        if (duplicateLinesInNew != duplicateLinesInOriginal){
+            System.err.println("crawlog duplicateLines in original and in new metadata file is not identical. original=" + duplicateLinesInOriginal + ", new = " +  duplicateLinesInNew);
+            return false;
+        }
+        */
+        List<String> lines = FileUtils.readListFromFile(dedupCdxFile);
+        if (lines.size() != duplicateLinesInNew) {
+            System.err.println("crawlog duplicateLines (" + duplicateLinesInNew + ") does not match # lines in dedupCdxFile (" +  lines.size() + ")");
+            return false;
+        }
+        
+        return true;
+    }
+    
 }
