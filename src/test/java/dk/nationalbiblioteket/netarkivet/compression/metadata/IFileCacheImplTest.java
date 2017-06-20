@@ -1,6 +1,8 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileCacheImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoaderImpl;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 

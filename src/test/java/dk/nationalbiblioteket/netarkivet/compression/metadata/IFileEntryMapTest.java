@@ -1,10 +1,8 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
-import dk.nationalbiblioteket.netarkivet.compression.Util;
-import org.testng.annotations.BeforeMethod;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileEntryMap;
 import org.testng.annotations.Test;
-
-import java.util.Properties;
 
 import static org.testng.Assert.assertEquals;
 

@@ -3,6 +3,10 @@ package dk.nationalbiblioteket.netarkivet.compression.metadata;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCacheFactory;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoaderImpl;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
@@ -280,7 +284,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
 
                     String file = captureSearchResult.getFile();
                     long oldOffset = captureSearchResult.getOffset();
-                    IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+                    //IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+                    IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
                     IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
                     captureSearchResult.setOffset(iFileEntry.getNewOffset());
                     captureSearchResult.setFile(file + ".gz");
@@ -303,7 +308,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     }
 
     private byte[][] getDedupPayload(InputStream crawllogPayloadIS) throws DeeplyTroublingException {
-        final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+        //final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+        final IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
         StringBuffer migrationOutput = new StringBuffer();
         StringBuffer cdxOutput = new StringBuffer();
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();

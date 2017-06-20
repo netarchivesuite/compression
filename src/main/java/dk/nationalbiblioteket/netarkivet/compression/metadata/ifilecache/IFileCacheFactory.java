@@ -1,6 +1,11 @@
-package dk.nationalbiblioteket.netarkivet.compression.metadata;
+package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileCacheImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileCacheSoftApacheImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoader;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileCacheSoftLongArrays;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoader;
 
 /**
  * Created by csr on 5/24/17.
