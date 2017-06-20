@@ -1,7 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
 import java.util.Properties;
@@ -9,7 +8,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import static org.testng.Assert.*;
 
 /**
  * Created by csr on 5/22/17.
@@ -33,7 +31,6 @@ public class IFileCacheSoftImplTest {
         }
     }
 
-    //@Test
     public void testGetOrderedListing() throws Exception {
         Properties properties = new Properties();
         properties.setProperty(Util.CACHE_SIZE, "300");
