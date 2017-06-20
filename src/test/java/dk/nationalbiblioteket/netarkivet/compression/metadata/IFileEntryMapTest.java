@@ -19,7 +19,7 @@ public class IFileEntryMapTest {
         );
         assertEquals(Long.valueOf(51), map.get(5).getNewOffset(),
                      "Looking up key 5 should give the expected new offset");
-        assertEquals(Long.toString(801), map.get(8).getTimestamp(),
+        assertEquals(Long.valueOf(801), map.get(8).getTimestamp(),
                      "Looking up key 8 should give the expected timestamp");
     }
 

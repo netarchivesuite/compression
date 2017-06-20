@@ -91,6 +91,9 @@ public class MetadatafileGeneratorRunnableTest {
         org.apache.commons.io.FileUtils.copyFile(inputFile, compInput);
         Runtime.getRuntime().exec("gunzip " + compInput.getAbsolutePath()).waitFor();
         File decompInput = new File(compInput.getAbsolutePath().replace(".gz", ""));
+        //The following assert would be true if we had a full ifile cache. But in tests we don't so
+        //cdx lines can't gte transformed, and therefore the output file is often shorter than the input.
+        //assertTrue(decompOutput.length() > decompInput.length());
         if (inputFile.getName().endsWith("warc.gz")) {
             checkWarc(decompInput, decompOutput);
         } else {
