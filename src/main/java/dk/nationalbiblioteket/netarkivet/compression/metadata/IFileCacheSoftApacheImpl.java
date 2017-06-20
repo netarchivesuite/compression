@@ -20,7 +20,7 @@ public class IFileCacheSoftApacheImpl implements IFileCache {
 
     private IFileLoader iFileLoader;
 
-    private ArrayBlockingQueue<ConcurrentSkipListMap<Long, IFileEntry>> hardCache;
+    private static ArrayBlockingQueue<ConcurrentSkipListMap<Long, IFileEntry>> hardCache;
 
     private static Map<String, ConcurrentSkipListMap<Long, IFileEntry>> cache;
 
@@ -37,7 +37,9 @@ public class IFileCacheSoftApacheImpl implements IFileCache {
                 new ReferenceMap<>(AbstractReferenceMap.ReferenceStrength.HARD, AbstractReferenceMap.ReferenceStrength.SOFT, true);
         cache = Collections.synchronizedMap(baseMap);
         int hardCacheSize = Integer.parseInt(Util.getProperties().getProperty(Util.CACHE_SIZE));
-        hardCache = new ArrayBlockingQueue<>(hardCacheSize);
+        if (hardCacheSize > 0) {
+            hardCache = new ArrayBlockingQueue<>(hardCacheSize);
+        }
     }
 
 
@@ -53,10 +55,12 @@ public class IFileCacheSoftApacheImpl implements IFileCache {
             ifileMap = iFileLoader.getIFileEntryMap(oldFilename);
             synchronized (cache) {
                 cache.put(oldFilename, ifileMap);
-                if (hardCache.remainingCapacity() == 0) {
-                    hardCache.poll();
+                if (hardCache != null) {
+                    if (hardCache.remainingCapacity() == 0) {
+                        hardCache.poll();
+                    }
+                    hardCache.add(ifileMap);
                 }
-                hardCache.add(ifileMap);
             }
         }
         return ifileMap;
