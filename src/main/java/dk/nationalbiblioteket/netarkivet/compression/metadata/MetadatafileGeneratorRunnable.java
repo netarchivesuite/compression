@@ -274,24 +274,25 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             String line;
             StringBuilder sb = new StringBuilder();
             while ((line = br.readLine()) != null && line.trim().length() > 0) {
-                CaptureSearchResult captureSearchResult = null;
                 try {
+                    CaptureSearchResult captureSearchResult = null;
                     captureSearchResult = cdxFormat.parseResult(line);
-                } catch (CDXFormatException e) {
-                    throw new RuntimeException("Cannot parse " + line);
+
+                    String file = captureSearchResult.getFile();
+                    long oldOffset = captureSearchResult.getOffset();
+                    IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+                    IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
+                    captureSearchResult.setOffset(iFileEntry.getNewOffset());
+                    captureSearchResult.setFile(file + ".gz");
+                    line = cdxFormat.serializeResult(captureSearchResult);
+                    if (!firstLine) {
+                        sb.append("\n");
+                    }
+                    sb.append(line);
+                    firstLine = false;
+                } catch (Exception e) {
+                    logger.warn("Error processing '" + line + "'", e);
                 }
-                String file = captureSearchResult.getFile();
-                long oldOffset = captureSearchResult.getOffset();
-                IFileCache iFileCache = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
-                IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
-                captureSearchResult.setOffset(iFileEntry.getNewOffset());
-                captureSearchResult.setFile(file + ".gz");
-                line = cdxFormat.serializeResult(captureSearchResult);
-                if (!firstLine) {
-                    sb.append("\n");
-                }
-                sb.append(line);
-                firstLine = false;
             }
             return sb.toString().getBytes();
         } catch (IOException e) {
