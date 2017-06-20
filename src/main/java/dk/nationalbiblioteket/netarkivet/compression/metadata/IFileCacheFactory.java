@@ -15,4 +15,9 @@ public class IFileCacheFactory {
             return IFileCacheImpl.getIFileCacheImpl(iFileLoader);
         }
     }
+
+    public static IFileCache getIFileCache(IFileTriLongLoader iFileTriLongLoader) {
+        // Note: Only soft references
+        return IFileCacheSoftLongArrays.getIFileCacheSoftApacheImpl(iFileTriLongLoader);
+    }
 }
