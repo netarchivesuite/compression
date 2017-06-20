@@ -11,6 +11,10 @@ public class IFileEntryMap extends TriLongListMap<IFileEntry> {
         super(filename);
     }
 
+    public IFileEntryMap(String filename, long[] keys, long[] values1, long[] values2) {
+        super(filename, keys, values1, values2);
+    }
+
     @Override
     protected IFileEntry valuesToObject(long value1, long value2) {
         return new IFileEntry(value1, Long.toString(value2));

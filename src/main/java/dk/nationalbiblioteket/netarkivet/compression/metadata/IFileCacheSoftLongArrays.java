@@ -69,7 +69,7 @@ public class IFileCacheSoftLongArrays implements IFileCache {
 
     @Override
     public synchronized Iterator<Map.Entry<Long, IFileEntry>> getOrderedListing(String oldFilename) throws FileNotFoundException {
-        throw new UnsupportedOperationException("Not implemented yet. Is it needed at all?");
+        return loadFile(oldFilename).entrySet().iterator();
     }
 
     @Override
