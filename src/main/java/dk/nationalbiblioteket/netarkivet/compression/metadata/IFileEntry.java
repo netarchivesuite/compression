@@ -5,8 +5,8 @@ import java.util.AbstractMap;
 /**
  * Represents the pair (newOffset, timestamp) in an ifile.
  */
-public class IFileEntry extends AbstractMap.SimpleImmutableEntry<Long, String> {
-    public IFileEntry(Long key, String value) {
+public class IFileEntry extends AbstractMap.SimpleImmutableEntry<Long, Long> {
+    public IFileEntry(Long key, Long value) {
         super(key, value);
     }
 
@@ -14,7 +14,7 @@ public class IFileEntry extends AbstractMap.SimpleImmutableEntry<Long, String> {
         return getKey();
     }
 
-   public String getTimestamp() {
-       return getValue();
-   }
+    public Long getTimestamp() {
+        return getValue();
+    }
 }

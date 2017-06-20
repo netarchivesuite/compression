@@ -27,7 +27,7 @@ public class IFileCacheSoftImplTest {
             ConcurrentSkipListMap<Long, IFileEntry> iFileMap = new ConcurrentSkipListMap<>();
             Random random = new Random();
             for (int i=0; i<MAP_SIZE; i++) {
-                iFileMap.put(random.nextLong(), new IFileEntry(random.nextLong(), "foobar"));
+                iFileMap.put(random.nextLong(), new IFileEntry(random.nextLong(), random.nextLong()));
             }
             return iFileMap;
         }
