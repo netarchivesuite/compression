@@ -324,7 +324,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             String filename = split[8];
                             String offset = split[7];
                             IFileEntry iFileEntry = iFileCache.getIFileEntry(filename, Long.parseLong(offset));
-                            migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset());
+                            migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append(' ').append(iFileEntry.getTimestamp());
                             split[8] = filename + ".gz";
                             split[7] = "" + iFileEntry.getNewOffset();
                             cdxOutput.append(StringUtils.join(split, ' '));
