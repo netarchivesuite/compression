@@ -374,7 +374,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     sb.append(line);
                     firstLine = false;
                 } catch (AlreadyKnownMissingFileException e) {
-                    logger.warn("Error processing '" + line + "'", e);
+                    //logger.warn("Error processing '" + line + "'", e);
                 } catch (Exception e) {
                     logger.warn("Error processing '" + line + "'", e);
                 }
@@ -440,7 +440,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             logger.warn("Thread #{}: adapter.adaptLine of duplicate line '{}' failed. Line ignored", threadNo, line);
                         }
                     } catch (AlreadyKnownMissingFileException e) {
-                        logger.warn("Error parsing '{}'.", line, e);
+                        //logger.warn("Error parsing '{}'.", line, e);
                     } catch (Exception e) {
                             logger.warn("Error parsing '{}'.", line, e);
                     }

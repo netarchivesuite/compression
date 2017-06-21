@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -24,9 +25,9 @@ public class Compressor{
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
     String filelistFilename;
 
-    private void fillQueue(String filelistFilename) throws IOException {
+    private void fillQueue(String filelistFilename, String blacklistFilename) throws IOException {
         this.filelistFilename = filelistFilename;
-        List<String> blacklisted = readBlacklist();
+        List<String> blacklisted = readBlacklist(filelistFilename);
         sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
         writeCompressionLog("Sharedqueue now filled with " + sharedQueue.size() + " elements"); 
     }
@@ -35,11 +36,17 @@ public class Compressor{
         return p -> !p.isEmpty() && !blacklisted.contains(p);
     }
 
-    private List<String> readBlacklist() throws IOException {
-        ClassLoader classLoader = getClass().getClassLoader();
-        String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
-        File file = new File(classLoader.getResource(blacklistFilename).getFile());
-        return Files.readAllLines(Paths.get(file.getAbsolutePath()));
+    private List<String> readBlacklist(String blacklistFilename) throws IOException {
+        //ClassLoader classLoader = getClass().getClassLoader();
+        //String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
+        //File file = new File(classLoader.getResource(blacklistFilename).getFile());
+        if (blacklistFilename == null) {
+            writeCompressionLog("No blacklistfile was given as argument!");
+            return new ArrayList<String>();
+        }
+        List<String> blacklist = Files.readAllLines(Paths.get(blacklistFilename));
+        writeCompressionLog("Read " + blacklist.size() + " entries from blacklistfile: " + blacklistFilename);
+        return blacklist;
     }
 
 
@@ -61,7 +68,11 @@ public class Compressor{
         }
         Compressor compressor = new Compressor();
         String inputFile = args[0];
-        compressor.fillQueue(inputFile);
+        String blacklistFile = null;
+        if (args.length > 1) {
+            blacklistFile = args[1];
+        }
+        compressor.fillQueue(inputFile, blacklistFile);
         compressor.startConsumers();
     }
     

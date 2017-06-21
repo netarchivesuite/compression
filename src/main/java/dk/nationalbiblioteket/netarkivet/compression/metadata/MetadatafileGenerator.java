@@ -2,10 +2,10 @@ package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
@@ -30,9 +30,9 @@ public class MetadatafileGenerator {
     public static Properties properties;
 
 
-    private void fillQueue(String filelistFilename) throws IOException {
+    private void fillQueue(String filelistFilename, String blacklistFilename) throws IOException {
         this.filelistFilename = filelistFilename;
-        List<String> blacklisted = readBlacklist();
+        List<String> blacklisted = readBlacklist(blacklistFilename);
         sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
         logger.info("Loaded {} elements from file {} into sharedqueue", sharedQueue.size(), filelistFilename);
     }
@@ -41,11 +41,17 @@ public class MetadatafileGenerator {
        return p -> !p.isEmpty() && !blacklisted.contains(p);
     }
 
-    private List<String> readBlacklist() throws IOException {
-        ClassLoader classLoader = getClass().getClassLoader();
-        String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
-        File file = new File(classLoader.getResource(blacklistFilename).getFile());
-        return Files.readAllLines(Paths.get(file.getAbsolutePath()));
+    private List<String> readBlacklist(String blacklistFilename) throws IOException {
+        //ClassLoader classLoader = getClass().getClassLoader();
+        //String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
+        //File file = new File(classLoader.getResource(blacklistFilename).getFile());
+        if (blacklistFilename == null) {
+            logger.info("No blacklistfile was given as argument!");
+            return new ArrayList<String>();
+        }
+        List<String> blacklist = Files.readAllLines(Paths.get(blacklistFilename));
+        logger.info("Read " + blacklist.size() + " entries from blacklistfile: " + blacklistFilename);
+        return blacklist;
     }
 
     private void startConsumers() {
@@ -61,7 +67,11 @@ public class MetadatafileGenerator {
 
         MetadatafileGenerator metadatafileGenerator = new MetadatafileGenerator();
         String inputFile = args[0];
-        metadatafileGenerator.fillQueue(inputFile);
+        String blacklistFile = null;
+        if (args.length > 1) {
+            blacklistFile = args[1];
+        }
+        metadatafileGenerator.fillQueue(inputFile, blacklistFile);
         metadatafileGenerator.startConsumers();
     }
     

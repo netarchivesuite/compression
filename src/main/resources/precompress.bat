@@ -7,7 +7,7 @@ Set JARDIR=%~dp0\..\lib
 Set CONFDIR=%~dp0\..\config
 
 for %%f in (split_output_*)  do (
-   java -classpath "%JARDIR%/*" -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %%f
+   java -classpath "%JARDIR%/*" -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %%f %3
    del %%f
    ECHO "Finished processing corpus file %%f"
 )
@@ -17,7 +17,7 @@ ECHO "Finished all processing"
 GOTO DONE
 
 :NO_ARGUMENT
-ECHO "Usage: precompress.bat <corpus_file> <chunksize>"
+ECHO "Usage: precompress.bat <corpus_file> <chunksize> <blacklistfile>"
 exit /B 1
 
 :DONE
