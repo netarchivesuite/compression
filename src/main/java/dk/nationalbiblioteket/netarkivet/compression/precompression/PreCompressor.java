@@ -10,8 +10,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Multithreaded precompressor, based on http://stackoverflow.com/a/37862561
@@ -24,8 +27,20 @@ public class PreCompressor {
     private static String inputFile;
 
     private void fillQueue(String filelistFilename) throws IOException, DeeplyTroublingException {
-        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
+        List<String> blacklisted = readBlacklist();
+        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
         writeCompressionLog("Sharedqueue now filled with " + sharedQueue.size() + " elements"); 
+    }
+    
+    private Predicate<String> predicate(List<String> blacklisted) {
+        return p -> !p.isEmpty() && !blacklisted.contains(p);
+    }
+
+    private List<String> readBlacklist() throws IOException {
+        ClassLoader classLoader = getClass().getClassLoader();
+        String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
+        File file = new File(classLoader.getResource(blacklistFilename).getFile());
+        return Files.readAllLines(Paths.get(file.getAbsolutePath()));
     }
 
     private void startConsumers() throws DeeplyTroublingException {
@@ -56,5 +71,4 @@ public class PreCompressor {
         (new File(compressionLogPath)).getParentFile().mkdirs();
         Util.writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
-    
 }
