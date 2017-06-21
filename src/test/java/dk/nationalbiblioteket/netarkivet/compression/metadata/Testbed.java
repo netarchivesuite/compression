@@ -45,14 +45,14 @@ public class Testbed {
     String output_dir_S = "src/test/working";
     File output_dir = new File(output_dir_S);
 
-    @BeforeTest
+    //@BeforeTest
     public void setUp() throws Exception {
         FileUtils.deleteDirectory(output_dir);
         FileUtils.forceMkdir(output_dir);
         MetadatafileGeneratorRunnableTest.setup();
     }
 
-    @Test
+    //@Test
     public void testIterateOverProblemFile() throws IOException {
         File input = new File(special_arc);
         InputStream is = new FileInputStream(input);
@@ -73,7 +73,7 @@ public class Testbed {
         reader.close();
     }
 
-    @Test
+    //@Test
     public void testReadWriteWarc() throws IOException {
         File output_file = new File(output_dir, (new File(input_warc)).getName()+".gz");
         MetadataFileWriter writer = createWriter(output_file);
@@ -107,7 +107,7 @@ public class Testbed {
         writer.close();
     }
 
-    @Test
+    //@Test
     public void testReadWriteArc() throws IOException {
         File output_file = new File(output_dir, (new File(input_arc)).getName() + ".gz" );
         Settings.set(METADATA_FORMAT, "arc");
@@ -132,7 +132,6 @@ public class Testbed {
      * takes custom headers.
      * @throws IOException
      */
-    @Test
     public void testReadArcWriteWarc() throws IOException {
         File output_file = new File(output_dir, (new File(input_arc)).getName() + ".warc.gz" );
         Settings.set(METADATA_FORMAT, "warc");
