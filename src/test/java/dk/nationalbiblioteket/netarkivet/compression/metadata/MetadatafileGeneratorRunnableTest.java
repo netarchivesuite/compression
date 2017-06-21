@@ -11,7 +11,9 @@ import org.apache.commons.io.LineIterator;
 import org.archive.io.arc.ARCReaderFactory;
 import org.archive.io.warc.WARCReaderFactory;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeGroups;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
@@ -33,14 +35,16 @@ import static org.testng.Assert.*;
  */
 public class MetadatafileGeneratorRunnableTest {
 
+    static String originalRoot ="src/test/data/ORIGINALS";
+    static String workingRoot ="src/test/data/WORKING";
     static String originals ="src/test/data/ORIGINALS/metadata";
     static String working ="src/test/data/WORKING/metadata";
     static String IFILE_DIR = "src/test/data/WORKING/metadata/ifiles";
     static String Depth = "0";
-    static String INPUT_FILE = "src/test/data/WORKING/3-metadata-1.warc.gz";
+    static String INPUT_FILE = "src/test/data/WORKING/metadata/3-metadata-1.warc.gz";
     static String NMETADATA_DIR = "output";
 
-    @BeforeClass
+    @BeforeMethod
     public static void setup() throws Exception {
         org.apache.commons.io.FileUtils.deleteDirectory(new File(working));
         Util.properties = new Properties();
@@ -53,10 +57,12 @@ public class MetadatafileGeneratorRunnableTest {
         Util.properties.put(Util.CDX_DEPTH, "0");
         Util.properties.put(Util.UPDATED_FILENAME_MD5_FILEPATH, NMETADATA_DIR + "/newchecksums");
         Util.properties.put(Util.USE_SOFT_CACHE, "true");
-        FileUtils.copyDirectory(new File(originals), new File(working));
+        FileUtils.removeRecursively(new File(workingRoot));
+        FileUtils.copyDirectory(new File(originalRoot), new File(workingRoot));
         org.apache.commons.io.FileUtils.deleteDirectory(new File(NMETADATA_DIR));
 
     }
+
 
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
@@ -139,9 +145,10 @@ public class MetadatafileGeneratorRunnableTest {
 
     @Test
     public void testValidateNewWarcFile() throws Exception {
+        File input = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
+        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile(INPUT_FILE);
-        File input = new File(INPUT_FILE);
+        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/metadata/3-metadata-1.warc.gz");
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.warc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
@@ -155,9 +162,10 @@ public class MetadatafileGeneratorRunnableTest {
     
     @Test
     public void testProcessArcFile() throws Exception {
+        File input = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
+        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
-        File input = new File("src/test/data/WORKING/3-metadata-1.arc.gz");
+        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
@@ -167,9 +175,10 @@ public class MetadatafileGeneratorRunnableTest {
     
     
     public void testValidateNewMetadataArcFile() throws Exception {
+        File input = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
+        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
-        File input = new File("src/test/data/WORKING/3-metadata-1.arc.gz");
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
@@ -181,9 +190,10 @@ public class MetadatafileGeneratorRunnableTest {
     
     @Test
     public void testcompareCrawllogWithDedupcdxfile() throws IOException, WeirdFileException, DeeplyTroublingException {
+        File originalMetadataFile = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
+        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        File originalMetadataFile = new File("src/test/data/WORKING/3-metadata-1.arc.gz");
-        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
+        metadatafileGeneratorRunnable.processFile(originalMetadataFile.getAbsolutePath());
         File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
         File dedupCdxFile = new File(new File("cdx"), originalMetadataFile.getName() + ".cdx");
         assertTrue(dedupCdxFile.exists(), "dedupcdxfile does not exist: " + dedupCdxFile.getAbsolutePath());

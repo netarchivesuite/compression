@@ -14,14 +14,29 @@
  */
 package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
 
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.AlreadyKnownMissingFileException;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IFileTriLongLoaderImpl implements IFileTriLongLoader {
+
+    List<String> knownMissing = new ArrayList<>();
+
     @Override
     public IFileEntryMap getIFileEntryMap(String filename) throws FileNotFoundException {
+        synchronized (knownMissing) {
+            if (knownMissing.contains(filename)) {
+                throw new AlreadyKnownMissingFileException();
+            }
+        }
         try {
             return new IFileEntryMap(filename);
+        } catch (FileNotFoundException e1) {
+            knownMissing.add(filename);
+            throw (e1);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
