@@ -14,15 +14,19 @@ print_usage()
 delete=0
 tempdir=$(dirname $(mktemp -u))
 while  getopts ":t:o:d" opt; do
-    case $opt in
+    case "$opt" in
        d)
           delete=1
           ;;
        t)
-          tempdir=$OPTARG
+          tempdir="$OPTARG"
           ;;
        o)
-          output=$OPTARG
+          output="$OPTARG"
+          ;;
+       ?)
+          print_usage
+          exit 1
           ;;
     esac
 done
@@ -36,8 +40,7 @@ dir=$1
 tempfile=$(mktemp)
 echo "Sorting files in $dir to $output, using temporary file $tempfile."
 
-export LC_ALL=C;
 find $dir -type f -exec bash -c "cat '{}' >>$tempfile; if [ $delete -eq 1 ]; then rm '{}'; fi" \;
-sort -T $tempdir $tempfile > $output
+LC_ALL_C sort -T $tempdir $tempfile > $output
 rm $tempfile
 
