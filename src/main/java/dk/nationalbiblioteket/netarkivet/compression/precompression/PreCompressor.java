@@ -9,9 +9,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Multithreaded precompressor, based on http://stackoverflow.com/a/37862561
@@ -23,9 +27,27 @@ public class PreCompressor {
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
     private static String inputFile;
 
-    private void fillQueue(String filelistFilename) throws IOException, DeeplyTroublingException {
-        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)));
+    private void fillQueue(String filelistFilename, String blacklistFilename) throws IOException, DeeplyTroublingException {
+        List<String> blacklisted = readBlacklist(blacklistFilename);
+        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
         writeCompressionLog("Sharedqueue now filled with " + sharedQueue.size() + " elements"); 
+    }
+    
+    private Predicate<String> predicate(List<String> blacklisted) {
+        return p -> !p.isEmpty() && !blacklisted.contains(p);
+    }
+
+    private List<String> readBlacklist(String blacklistFilename) throws IOException, DeeplyTroublingException {
+        //ClassLoader classLoader = getClass().getClassLoader();
+        //String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
+        //File file = new File(classLoader.getResource(blacklistFilename).getFile());
+        if (blacklistFilename == null) {
+            writeCompressionLog("No blacklistfile was given as argument!");
+            return new ArrayList<String>();
+        }
+        List<String> blacklist = Files.readAllLines(Paths.get(blacklistFilename));
+        writeCompressionLog("Read " + blacklist.size() + " entries from blacklistfile: " + blacklistFilename);
+        return blacklist;
     }
 
     private void startConsumers() throws DeeplyTroublingException {
@@ -45,7 +67,11 @@ public class PreCompressor {
         (new File(md5Filepath)).getParentFile().mkdirs();
         PreCompressor preCompressor = new PreCompressor();
         inputFile = args[0];
-        preCompressor.fillQueue(inputFile);
+        String blacklistFile = null;
+        if (args.length > 1) {
+            blacklistFile = args[1];
+        }
+        preCompressor.fillQueue(inputFile, blacklistFile);
         preCompressor.startConsumers();
     }
 
@@ -56,5 +82,4 @@ public class PreCompressor {
         (new File(compressionLogPath)).getParentFile().mkdirs();
         Util.writeToFile(new File(compressionLogPath), message, 5, 1000L);
     }
-    
 }
