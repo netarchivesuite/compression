@@ -3,15 +3,10 @@ package dk.nationalbiblioteket.netarkivet.compression.metadata;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,29 +22,20 @@ public class MetadatafileGenerator {
 
     BlockingQueue<String> sharedQueue = new LinkedBlockingQueue<String>();
     private String filelistFilename;
-    public static Properties properties;
-
 
     private void fillQueue(String filelistFilename, String blacklistFilename) throws IOException {
         this.filelistFilename = filelistFilename;
         List<String> blacklisted = readBlacklist(blacklistFilename);
-        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
+        sharedQueue.addAll(Util.getFilteredList(filelistFilename, blacklisted));
         logger.info("Loaded {} elements from file {} into sharedqueue", sharedQueue.size(), filelistFilename);
     }
 
-    private Predicate<String> predicate(List<String> blacklisted) {
-       return p -> !p.isEmpty() && !blacklisted.contains(p);
-    }
-
     private List<String> readBlacklist(String blacklistFilename) throws IOException {
-        //ClassLoader classLoader = getClass().getClassLoader();
-        //String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
-        //File file = new File(classLoader.getResource(blacklistFilename).getFile());
         if (blacklistFilename == null) {
             logger.info("No blacklistfile was given as argument!");
             return new ArrayList<String>();
         }
-        List<String> blacklist = Files.readAllLines(Paths.get(blacklistFilename));
+        List<String> blacklist = Util.getAllLines(blacklistFilename);
         logger.info("Read " + blacklist.size() + " entries from blacklistfile: " + blacklistFilename);
         return blacklist;
     }

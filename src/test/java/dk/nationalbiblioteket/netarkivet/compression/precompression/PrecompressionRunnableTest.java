@@ -3,7 +3,6 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnable;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnableTest;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -92,8 +90,8 @@ public class PrecompressionRunnableTest {
         PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
         consumer.precompress(inputFile.getAbsolutePath());
         assertTrue(ifile.exists(), ifile.getAbsolutePath() + " should exist.");
-        boolean isMetadata = inputFile.getName().contains("metadata");
-        assertTrue( (isMetadata && ifile.length()==0) || FileUtils.readLines(ifile).size() > 10);
+        boolean isMetadata = inputFile.getName().contains("metadata"); 
+        assertTrue( (isMetadata && ifile.length()==0) || FileUtils.readLines(ifile).size() > 10, "Failed because either inputfile is metadata and ifile is empty, or ifile-length <= 10.Ifile-length=" +  ifile.length());
     }
 
 }
