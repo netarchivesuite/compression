@@ -31,7 +31,7 @@ public class IFileGenericCache implements IFileCache {
         instance = null;
     }
 
-    protected IFileGenericCache(IFileMapLoader iFileLoader) {
+    public IFileGenericCache(IFileMapLoader iFileLoader) {
         this.iFileLoader = iFileLoader;
         ReferenceMap<String, IFileMap> baseMap =
                 new ReferenceMap<>(AbstractReferenceMap.ReferenceStrength.HARD, AbstractReferenceMap.ReferenceStrength.SOFT, true);

@@ -32,7 +32,7 @@ public class IFileCacheSoftApacheImpl implements IFileCache {
         return instance;
     }
 
-    private IFileCacheSoftApacheImpl(IFileLoader iFileLoader) {
+    public IFileCacheSoftApacheImpl(IFileLoader iFileLoader) {
         this.iFileLoader = iFileLoader;
         ReferenceMap<String, ConcurrentSkipListMap<Long, IFileEntry>> baseMap =
                 new ReferenceMap<>(AbstractReferenceMap.ReferenceStrength.HARD, AbstractReferenceMap.ReferenceStrength.SOFT, true);

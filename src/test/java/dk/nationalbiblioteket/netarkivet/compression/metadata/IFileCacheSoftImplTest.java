@@ -7,6 +7,7 @@ import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectb
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoader;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileEntryMap;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trival.IFileTriValMap;
+import junit.framework.Assert;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
@@ -54,6 +55,75 @@ public class IFileCacheSoftImplTest {
         }
     }
 
+    static class StaticMapLoader implements IFileMapLoader {
+        private final IFileMap map;
+        public StaticMapLoader(IFileMap map) {
+            this.map = map;
+        }
+        @Override
+        public IFileMap getIFileMap(String filename) throws FileNotFoundException {
+            return map;
+        }
+    }
+    static class StaticIFileLoader implements IFileLoader {
+        private final ConcurrentSkipListMap<Long, IFileEntry> map;
+        public StaticIFileLoader(ConcurrentSkipListMap<Long, IFileEntry> map) {
+            this.map = map;
+        }
+        @Override
+        public ConcurrentSkipListMap<Long, IFileEntry> getIFileEntryMap(String filename) throws FileNotFoundException {
+            return map;
+        }
+    }
+
+    @Test
+    public void compareLookupPerformance() throws FileNotFoundException {
+        final int ENTRIES = 10000;
+        final int LOOKUPS = 1000000;
+        final int RUNS = 5;
+        final String WARC_NAME = "dummy";
+        Random random = new Random(87);
+
+        Properties properties = new Properties();
+        properties.setProperty(Util.CACHE_SIZE, "300");
+        Util.properties = properties;
+
+        final IFileIOHelper.IFileArrays rawData = generateSimulatedData(random.nextInt(), ENTRIES);
+
+        IFileCache triValCache = new IFileGenericCache(new StaticMapLoader(
+                new IFileTriValMap(WARC_NAME, rawData.getKeys(), rawData.getValues1(), rawData.getValues2())));
+        IFileCache triLongCache = new IFileGenericCache(new StaticMapLoader(
+                new IFileEntryMap(WARC_NAME, rawData.getKeys(), rawData.getValues1(), rawData.getValues2())));
+        ConcurrentSkipListMap<Long, IFileEntry> iFileMap = new ConcurrentSkipListMap<>();
+        for (int i = 0 ; i < rawData.size() ; i++) {
+            iFileMap.put(rawData.getKeys()[i], new IFileEntry(rawData.getValues1()[i], rawData.getValues2()[i]));
+        }
+        IFileCache objectCache = new IFileCacheSoftApacheImpl(new StaticIFileLoader(iFileMap));
+
+        System.out.println("Running " + RUNS + " test @ " + LOOKUPS + " lookups");
+        for (int run = 0 ; run < RUNS ; run++) {
+            int seed = random.nextInt();
+            long triValMS = testLookupPerformance(rawData, triValCache, WARC_NAME, LOOKUPS, new Random(seed));
+            long triLongMS = testLookupPerformance(rawData, triLongCache, WARC_NAME, LOOKUPS, new Random(seed));
+            long objectMS = testLookupPerformance(rawData, objectCache, WARC_NAME, LOOKUPS, new Random(seed));
+            System.out.println(String.format(
+                    "Run #%d/%d, triVal=%d lookups/ms, triLong=%d lookups/ms, object=%d lookups/ms",
+                    (run+1), RUNS, LOOKUPS/triValMS, LOOKUPS/triLongMS, LOOKUPS/objectMS));
+        }
+    }
+
+    private long testLookupPerformance(
+            IFileIOHelper.IFileArrays rawArrays, IFileCache cache, String warc, int lookups, Random random)
+            throws FileNotFoundException {
+        final long startTime = System.currentTimeMillis();
+        for (int i = 0 ; i < lookups ; i++) {
+            int index = random.nextInt(rawArrays.size());
+            long key = rawArrays.getKeys()[index];
+            Assert.assertNotNull("There should be a value for key " + key, cache.getIFileEntry(warc, key));
+        }
+        return System.currentTimeMillis()-startTime;
+    }
+
     /**
      * Attempts to generate sane sample data by limiting the offsets and timestamp to what should realistically be
      * encountered.
@@ -61,19 +131,22 @@ public class IFileCacheSoftImplTest {
      * @return a thin wrapper around three arrays with oldOffsets, newOffsets and timestamps.
      */
     private static IFileIOHelper.IFileArrays generateSimulatedData(int randomSeed) {
+        return generateSimulatedData(randomSeed, MAP_SIZE);
+    }
+    private static IFileIOHelper.IFileArrays generateSimulatedData(int randomSeed, int mapSize) {
         Random r = new Random(randomSeed);
         // Max original WARC-size 2GB
-        long[] originalOffsets = r.longs(MAP_SIZE, 0,Integer.MAX_VALUE).sorted().toArray();
-        long[] newOffsets = new long[MAP_SIZE];
-        long[] timestamps = new long[MAP_SIZE];
+        long[] originalOffsets = r.longs(mapSize, 0,Integer.MAX_VALUE).sorted().toArray();
+        long[] newOffsets = new long[mapSize];
+        long[] timestamps = new long[mapSize];
         final long timeBase = (long) (r.nextDouble() * Integer.MAX_VALUE); // First timestamp in the WARC
         final int timeMax = (int) (r.nextDouble() * 24*60*60*1000); // Time spend harvesting the WARC (at most 1 day)
 
-        for (int i = 0 ; i < MAP_SIZE ; i++) {
+        for (int i = 0 ; i < mapSize ; i++) {
             newOffsets[i] = (long) (originalOffsets[i] * 0.7); // Simulates compression gain
             timestamps[i] = timeBase + r.nextInt(timeMax);
         }
-        return new IFileIOHelper.IFileArrays().set(originalOffsets, newOffsets, timestamps, MAP_SIZE);
+        return new IFileIOHelper.IFileArrays().set(originalOffsets, newOffsets, timestamps, mapSize);
     }
 
     //@Test
