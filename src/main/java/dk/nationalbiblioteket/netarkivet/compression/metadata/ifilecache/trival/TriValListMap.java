@@ -71,7 +71,7 @@ public abstract class TriValListMap<T> extends AbstractMap<Long, T> {
     }
 
     private void setAbsolute(long majorBitPos, long value, int valBits) {
-        final int elementPos = (int)(majorBitPos >>> elementBits);
+        final int elementPos = (int)(majorBitPos >>> BLOCK_BITS);
         // The number of value-bits in the second long
         final long endBits = (majorBitPos & MOD_MASK) + (valBits - BLOCK_SIZE);
         // TODO: Cache the maskRights for the three possibilities
