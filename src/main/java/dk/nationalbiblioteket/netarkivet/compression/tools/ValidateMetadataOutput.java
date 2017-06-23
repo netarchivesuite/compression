@@ -125,6 +125,7 @@ public class ValidateMetadataOutput {
             e.printStackTrace();
         } finally {
             IOUtils.closeQuietly(br);
+            resultFile.delete();
         }
         return duplicateLines;
     }
@@ -139,14 +140,13 @@ public class ValidateMetadataOutput {
      */
     public static boolean compareCrawllogWithDedupcdxfile(File originalMetadataFile, File newMetadataFile, File dedupCdxFile) throws IOException {
         int duplicateLinesInOriginal = findDuplicateLinesInCrawlog(originalMetadataFile);
-        System.out.println("crawlog duplicateLines in original: " + duplicateLinesInOriginal);
+        //System.out.println("crawlog duplicateLines in original: " + duplicateLinesInOriginal);
         int duplicateLinesInNew = findDuplicateLinesInCrawlog(newMetadataFile);
-        System.out.println("crawlog duplicateLines in new: " + duplicateLinesInNew);
-/*        if (duplicateLinesInNew != duplicateLinesInOriginal){
-            System.err.println("crawlog duplicateLines in original and in new metadata file is not identical. original=" + duplicateLinesInOriginal + ", new = " +  duplicateLinesInNew);
-            return false;
+        //System.out.println("crawlog duplicateLines in new: " + duplicateLinesInNew);
+        if (duplicateLinesInNew != duplicateLinesInOriginal){
+            System.err.println("WARNING: crawlog duplicateLines in original and in new metadata file is not identical. original=" + duplicateLinesInOriginal + ", new = " +  duplicateLinesInNew);
         }
-        */
+        
         List<String> lines = FileUtils.readListFromFile(dedupCdxFile);
         if (lines.size() != duplicateLinesInNew) {
             System.err.println("crawlog duplicateLines (" + duplicateLinesInNew + ") does not match # lines in dedupCdxFile (" +  lines.size() + ")");

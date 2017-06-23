@@ -132,9 +132,15 @@ public class Util {
     }
     
     private static Predicate<String> predicate(List<String> blacklisted) {
-        return p -> !p.isEmpty() && !blacklisted.contains(p);
+        return p -> !p.isEmpty() && !blacklisted.contains(getFilename(p));
     }
     
+    private static String getFilename(String p) {
+        String retValue = Paths.get(p).toFile().getName();
+        //System.out.println(retValue);
+        return retValue;
+    }
+
     public static List<String> getAllLines(String filename) throws IOException {
         return Files.readAllLines(Paths.get(filename));
     }
