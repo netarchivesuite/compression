@@ -1,17 +1,17 @@
-package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
+package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trival;
 
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileMap;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.TriLongListMap;
 
-import java.io.IOException;
+public class IFileTriValMap extends TriValListMap<IFileEntry>  implements IFileMap {
 
-/**
- * Note: This implementation requires the value inside of the IFileEntrys to be parsable as a long.
- */
-public class IFileEntryMap extends TriLongListMap<IFileEntry> implements IFileMap {
-
-    public IFileEntryMap(String filename, long[] keys, long[] values1, long[] values2) {
+    public IFileTriValMap(String filename, long[] keys, long[] values1, long[] values2) {
         super(filename, keys, values1, values2);
+    }
+
+    public IFileTriValMap(String filename, long[] keys, long[] values1, long[] values2, int elementCount) {
+        super(filename, keys, values1, values2, elementCount);
     }
 
     @Override

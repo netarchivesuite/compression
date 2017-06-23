@@ -9,7 +9,7 @@ import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCa
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCacheFactory;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileLoaderImpl;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoaderImpl;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileTriLongLoader;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriter;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterArc;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFileWriterWarc;
@@ -404,7 +404,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
 
     private IFileCache getIFileCache() {
         if (Boolean.parseBoolean(Util.getProperties().getProperty(Util.USE_SOFT_CACHE))) {
-            return IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
+            return IFileCacheFactory.getIFileCache(new IFileTriLongLoader());
         } else {
             return  IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
         }

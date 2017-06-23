@@ -12,28 +12,33 @@
  *  limitations under the License.
  *
  */
-package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
+package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trival;
 
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.AlreadyKnownMissingFileException;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileIOHelper;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileMap;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileMapLoader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IFileTriLongLoaderImpl implements IFileTriLongLoader {
+public class IFileTriValLoader implements IFileMapLoader {
 
-    List<String> knownMissing = new ArrayList<>();
+    private final List<String> knownMissing = new ArrayList<>();
 
     @Override
-    public IFileEntryMap getIFileEntryMap(String filename) throws FileNotFoundException {
+    public IFileMap getIFileMap(String filename) throws FileNotFoundException {
         synchronized (knownMissing) {
             if (knownMissing.contains(filename)) {
                 throw new AlreadyKnownMissingFileException();
             }
         }
         try {
-            return new IFileEntryMap(filename);
+            IFileIOHelper.IFileArrays ifArrays = IFileIOHelper.loadAsArrays(filename);
+            return new IFileTriValMap(
+                    filename, ifArrays.getKeys(), ifArrays.getValues1(), ifArrays.getValues2(), ifArrays.size());
         } catch (FileNotFoundException e1) {
             knownMissing.add(filename);
             throw (e1);

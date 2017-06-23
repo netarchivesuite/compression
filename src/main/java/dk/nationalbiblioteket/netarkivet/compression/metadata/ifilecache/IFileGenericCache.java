@@ -1,7 +1,6 @@
-package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
+package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
 import org.apache.commons.collections4.map.AbstractReferenceMap;
 import org.apache.commons.collections4.map.ReferenceMap;
@@ -13,28 +12,28 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 
 /**
- * Created by csr on 5/22/17.
+ * Handles hard- and soft-caching of IFileMaps.
  */
-public class IFileCacheSoftLongArrays implements IFileCache {
+public class IFileGenericCache implements IFileCache {
+    private IFileMapLoader iFileLoader;
+    private ArrayBlockingQueue<IFileMap> hardCache;
+    private Map<String, IFileMap> cache;
 
-    private static IFileCacheSoftLongArrays instance;
-
-    private IFileTriLongLoader iFileLoader;
-
-    private static ArrayBlockingQueue<IFileEntryMap> hardCache;
-
-    private static Map<String, IFileEntryMap> cache;
-
-    public static synchronized IFileCacheSoftLongArrays getIFileCacheSoftApacheImpl(IFileTriLongLoader iFileLoader) {
+    private static IFileGenericCache instance;
+    // TODO: It is really ugly to use a Singleton with an argument
+    public static synchronized IFileGenericCache getInstance(IFileMapLoader iFileLoader) {
         if (instance == null) {
-            instance = new IFileCacheSoftLongArrays(iFileLoader);
+            instance = new IFileGenericCache(iFileLoader);
         }
         return instance;
     }
+    public static void clearInstance() {
+        instance = null;
+    }
 
-    private IFileCacheSoftLongArrays(IFileTriLongLoader iFileLoader) {
+    protected IFileGenericCache(IFileMapLoader iFileLoader) {
         this.iFileLoader = iFileLoader;
-        ReferenceMap<String, IFileEntryMap> baseMap =
+        ReferenceMap<String, IFileMap> baseMap =
                 new ReferenceMap<>(AbstractReferenceMap.ReferenceStrength.HARD, AbstractReferenceMap.ReferenceStrength.SOFT, true);
         cache = Collections.synchronizedMap(baseMap);
         int hardCacheSize = Integer.parseInt(Util.getProperties().getProperty(Util.CACHE_SIZE));
@@ -43,17 +42,16 @@ public class IFileCacheSoftLongArrays implements IFileCache {
         }
     }
 
-
     @Override
     public synchronized IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException {
-        IFileEntryMap ifileMap = loadFile(oldFilename);
+        IFileMap ifileMap = loadFile(oldFilename);
         return ifileMap.get(oldOffset);
     }
 
-    private IFileEntryMap loadFile(String oldFilename) throws FileNotFoundException {
-        IFileEntryMap ifileMap = cache.get(oldFilename);
+    private IFileMap loadFile(String oldFilename) throws FileNotFoundException {
+        IFileMap ifileMap = cache.get(oldFilename);
         if (ifileMap == null) {
-            ifileMap = iFileLoader.getIFileEntryMap(oldFilename);
+            ifileMap = iFileLoader.getIFileMap(oldFilename);
             synchronized (cache) {
                 cache.put(oldFilename, ifileMap);
                 if (hardCache != null) {
@@ -77,6 +75,7 @@ public class IFileCacheSoftLongArrays implements IFileCache {
         return cache.size();
     }
 
+    // TODO: Add estimated memory use
     @Override
     public String toString() {
         return "Cache size " + cache.size();

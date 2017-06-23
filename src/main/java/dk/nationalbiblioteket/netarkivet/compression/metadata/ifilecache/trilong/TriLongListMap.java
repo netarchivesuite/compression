@@ -1,10 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
 
 
-import dk.nationalbiblioteket.netarkivet.compression.Util;
-import org.apache.commons.io.IOUtils;
-
-import java.io.*;
 import java.util.*;
 
 /**
@@ -19,44 +15,6 @@ public abstract class TriLongListMap<T> extends AbstractMap<Long, T> {
     private final long[] values2;
 
     /**
-     * Loads a listmap from the given file. The format is {@code key value1 value2\n} where all values are represented
-     * as written numbers.
-     */
-    public TriLongListMap(String filename) throws IOException {
-        this.filename = filename;
-
-        long[] keys = new long[1000];
-        long[] values1 = new long[1000];
-        long[] values2 = new long[1000];
-        int index = 0;
-
-        File subdir = Util.getIFileSubdir(filename, false);
-        File ifile = new File(subdir, filename + ".ifile.cdx");
-        if (!ifile.exists()) {
-            throw new FileNotFoundException("No such file: " + ifile.getAbsolutePath());
-        }
-        try(InputStream is = new FileInputStream(ifile)) {
-            for (Object lineO: IOUtils.readLines(is) ){ // TODO remove use of deprecated method
-                // Make sure there is room
-                if (index == keys.length) {
-                    keys = extend(keys);
-                    values1 = extend(values1);
-                    values2 = extend(values2);
-                }
-                String[] line = ((String) lineO).trim().split("\\s");
-                keys[index] = Long.parseLong(line[0]);
-                values1[index] = Long.parseLong(line[1]);
-                values2[index] = Long.parseLong(line[2]);
-                index++;
-            }
-        }
-        // Reduce arrays
-        this.keys = reduce(keys, index);
-        this.values1 = reduce(values1, index);
-        this.values2 = reduce(values2, index);
-    }
-
-    /**
      * Creates a listmap directly from the provided values.
      */
     public TriLongListMap(String filename, long[] keys, long[] values1, long[] values2) {
@@ -64,21 +22,6 @@ public abstract class TriLongListMap<T> extends AbstractMap<Long, T> {
         this.keys = keys;
         this.values1 = values1;
         this.values2 = values2;
-    }
-
-    private long[] extend(long[] elements) {
-        final long[] newElements = new long[elements.length*2];
-        System.arraycopy(elements, 0, newElements, 0, elements.length);
-        return newElements;
-    }
-
-    private long[] reduce(long[] elements, int size) {
-        if (size == elements.length) {
-            return elements;
-        }
-        final long[] newElements = new long[size];
-        System.arraycopy(elements, 0, newElements, 0, size);
-        return newElements;
     }
 
     /**
@@ -111,6 +54,15 @@ public abstract class TriLongListMap<T> extends AbstractMap<Long, T> {
     protected abstract T valuesToObject(long value1, long value2);
     protected abstract long objectToValue1(T object);
     protected abstract long objectToValue2(T object);
+
+    private final long constOverhead = 12+100+24*3;
+    /**
+     * @return the approximate memory use of this structure, as a sum of field overhead and elements.
+     */
+    public long getBytesUsed() {
+        return constOverhead + 8*3*size();
+    }
+
 
     /* Implements the needed methods form AbstractMap below */
 
