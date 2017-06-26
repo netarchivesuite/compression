@@ -52,8 +52,6 @@ public abstract class TriLongListMap<T> extends AbstractMap<Long, T> {
     }
 
     protected abstract T valuesToObject(long value1, long value2);
-    protected abstract long objectToValue1(T object);
-    protected abstract long objectToValue2(T object);
 
     private final long constOverhead = 12+100+24*3;
     /**

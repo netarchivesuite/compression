@@ -58,7 +58,14 @@ public abstract class TriValListMap<T> extends AbstractMap<Long, T> {
         this.elementCount = elementCount;
         elements = new long[elementCount*elementBits/64+1];
 
+        long previousKey = Long.MIN_VALUE;
         for (int i = 0 ; i < elementCount ; i++) {
+            if (keys[i] <= previousKey) {
+                throw new IllegalArgumentException(
+                        "Element #" + i + " has key value " + keys[i] + ", with the previous key being " +
+                        previousKey + ". The keys must be monotonically increasing");
+            }
+            previousKey = keys[i];
             set(i, keys[i], values1[i], values2[i]);
         }
     }
@@ -160,7 +167,7 @@ public abstract class TriValListMap<T> extends AbstractMap<Long, T> {
      * @return the object at the given position in the list.
      */
     public T getAtIndex(int index) {
-        // TODO: Collapse the two calls into 1
+        // TODO: Collapse the multi-calls into 1
         return valuesToObject(getValue1AtIndex(index), getValue2AtIndex(index));
     }
 
@@ -170,8 +177,6 @@ public abstract class TriValListMap<T> extends AbstractMap<Long, T> {
     }
 
     protected abstract T valuesToObject(long value1, long value2);
-    protected abstract long objectToValue1(T object);
-    protected abstract long objectToValue2(T object);
 
     /* Implements the needed methods form AbstractMap below */
 

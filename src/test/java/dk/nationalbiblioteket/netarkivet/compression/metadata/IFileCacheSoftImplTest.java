@@ -12,8 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
 import java.lang.management.ManagementFactory;
-import java.util.Properties;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 /**
@@ -49,9 +48,7 @@ public class IFileCacheSoftImplTest {
         @Override
         public IFileMap getIFileMap(String filename) throws FileNotFoundException {
             IFileIOHelper.IFileArrays data = generateSimulatedData(filename.hashCode());
-            IFileMap map = new IFileTriValMap(filename, data.getKeys(), data.getValues1(), data.getValues2());
-            //System.out.println(map);
-            return map;
+            return new IFileTriValMap(filename, data.getKeys(), data.getValues1(), data.getValues2());
         }
     }
 
@@ -76,50 +73,138 @@ public class IFileCacheSoftImplTest {
         }
     }
 
+    /**
+     * Generates random data and test lookups of IFileEntries. Secondarily outputs data on performance.
+     */
     @Test
-    public void compareLookupPerformance() throws FileNotFoundException {
-        final int ENTRIES = 10000;
-        final int LOOKUPS = 1000000;
-        final int RUNS = 5;
+    public void monkeyTestLookups() throws FileNotFoundException {
+        final int ENTRIES = 100000;
+        final int LOOKUPS = 100000;
+        final int RUNS = 3;
         final String WARC_NAME = "dummy";
-        Random random = new Random(87);
+
+        final int seed = new Random().nextInt();
+        //final int seed = -1535339272; // Fix the seed to reproduce findings
+        System.out.println("Random seed: " + seed);
+        Random random = new Random(seed);
+
+        final IFileIOHelper.IFileArrays rawData = generateSimulatedData(seed, ENTRIES);
+        Map<String, IFileCache> caches = createTestCaches(WARC_NAME, rawData);
+        long[] bestMS = new long[caches.size()];
+        Arrays.fill(bestMS, Long.MAX_VALUE);
+        System.out.println("Running " + RUNS + " iterations of " + LOOKUPS + " lookups in " + ENTRIES + " entries");
+        for (int run = 0 ; run < RUNS ; run++) {
+            int localSeed = random.nextInt();
+            int impl = 0;
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Run #%d/%d", (run+1), RUNS));
+            for (Map.Entry<String, IFileCache> entry: caches.entrySet()) {
+                long ms = testLookupPerformance(
+                        "localSeed=" + localSeed + ", implementation=" + entry.getKey(),
+                        rawData, entry.getValue(), WARC_NAME, LOOKUPS, new Random(localSeed));
+                sb.append(String.format(", %s=%d lookups/ms", entry.getKey(), LOOKUPS/ms));
+                bestMS[impl] = Math.min(bestMS[impl], ms);
+                impl++;
+            }
+            System.out.println(sb.toString());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(" Fastest");
+        int impl = 0;
+        for (Map.Entry<String, IFileCache> entry: caches.entrySet()) {
+            sb.append(", ").append(entry.getKey()).append("=").append(LOOKUPS/bestMS[impl++]).append(" lookups/ms");
+        }
+        System.out.println(sb.toString());
+    }
+
+    // Created from a failed {@link #MonkeyTestLookups} run (it failed because there were duplicate keys in the sample)
+    @Test
+    public void testSpecificTriValMap() throws FileNotFoundException {
+        final int ENTRIES = 100000;
+        final String WARC_NAME = "dummy";
+
+        final int seed = -1535339272; // Fix the seed to reproduce findings
+        System.out.println("Random seed: " + seed);
+        final IFileIOHelper.IFileArrays rawData = generateSimulatedData(seed, ENTRIES);
 
         Properties properties = new Properties();
         properties.setProperty(Util.CACHE_SIZE, "300");
         Util.properties = properties;
-
-        final IFileIOHelper.IFileArrays rawData = generateSimulatedData(random.nextInt(), ENTRIES);
-
-        IFileCache triValCache = new IFileGenericCache(new StaticMapLoader(
+        IFileGenericCache triValCache = new IFileGenericCache(new StaticMapLoader(
                 new IFileTriValMap(WARC_NAME, rawData.getKeys(), rawData.getValues1(), rawData.getValues2())));
-        IFileCache triLongCache = new IFileGenericCache(new StaticMapLoader(
-                new IFileEntryMap(WARC_NAME, rawData.getKeys(), rawData.getValues1(), rawData.getValues2())));
+        for (int i = 0 ; i < ENTRIES ; i++) {
+            long key = rawData.getKeys()[i];
+            long newOffest = rawData.getValues1()[i];
+            long timestamp = rawData.getValues2()[i];
+
+            IFileEntry entry = triValCache.getIFileEntry(WARC_NAME, key);
+            Assert.assertNotNull("For index=" + i + ", key=" + key + ", there should be an entry in " +
+                    triValCache.loadFile(WARC_NAME), entry);
+            Assert.assertEquals("For index=" + i + ", key=" + key + ", the newOffset should be as expected in " +
+                                triValCache.loadFile(WARC_NAME),
+                                Long.valueOf(newOffest), entry.getNewOffset());
+            Assert.assertEquals("For index=" + i + ", key=" + key + ", the timestamp should be as expected in " +
+                                triValCache.loadFile(WARC_NAME),
+                                Long.valueOf(timestamp), entry.getTimestamp());
+        }
+    }
+
+    // Not currently used, but nice for debug
+    @SuppressWarnings("StringConcatenationInsideStringBufferAppend")
+    private String dumpSurroundings(IFileMap map, long key) {
+        int origo = 0;
+        for (Map.Entry<Long, IFileEntry> entry: map.entrySet()) {
+            if (key == entry.getKey()) {
+                break;
+            }
+            origo++;
+        }
+
+        StringBuilder sb = new StringBuilder(1000);
+        int index = 0;
+        for (Map.Entry<Long, IFileEntry> entry: map.entrySet()) {
+            if (index >= origo-2 && index <= origo+2) {
+                sb.append("index=" + index + ", key=" + entry.getKey() +
+                          ", newOffset=" + entry.getValue().getNewOffset() +
+                          ", timestamp=" + entry.getValue().getTimestamp());
+            }
+            index++;
+        }
+        return sb.toString();
+    }
+
+    private Map<String, IFileCache> createTestCaches(String warcName, IFileIOHelper.IFileArrays rawData) {
+        Properties properties = new Properties();
+        properties.setProperty(Util.CACHE_SIZE, "300");
+        Util.properties = properties;
+        Map<String, IFileCache> caches = new LinkedHashMap<>();
+        IFileMap triMap = new IFileTriValMap(warcName, rawData.getKeys(), rawData.getValues1(), rawData.getValues2());
+        System.out.println(triMap);
+        caches.put("TriVal", new IFileGenericCache(new StaticMapLoader(
+                triMap)));
+        caches.put("TriLong", new IFileGenericCache(new StaticMapLoader(
+                new IFileEntryMap(warcName, rawData.getKeys(), rawData.getValues1(), rawData.getValues2()))));
         ConcurrentSkipListMap<Long, IFileEntry> iFileMap = new ConcurrentSkipListMap<>();
         for (int i = 0 ; i < rawData.size() ; i++) {
             iFileMap.put(rawData.getKeys()[i], new IFileEntry(rawData.getValues1()[i], rawData.getValues2()[i]));
         }
-        IFileCache objectCache = new IFileCacheSoftApacheImpl(new StaticIFileLoader(iFileMap));
-
-        System.out.println("Running " + RUNS + " test @ " + LOOKUPS + " lookups");
-        for (int run = 0 ; run < RUNS ; run++) {
-            int seed = random.nextInt();
-            long triValMS = testLookupPerformance(rawData, triValCache, WARC_NAME, LOOKUPS, new Random(seed));
-            long triLongMS = testLookupPerformance(rawData, triLongCache, WARC_NAME, LOOKUPS, new Random(seed));
-            long objectMS = testLookupPerformance(rawData, objectCache, WARC_NAME, LOOKUPS, new Random(seed));
-            System.out.println(String.format(
-                    "Run #%d/%d, triVal=%d lookups/ms, triLong=%d lookups/ms, object=%d lookups/ms",
-                    (run+1), RUNS, LOOKUPS/triValMS, LOOKUPS/triLongMS, LOOKUPS/objectMS));
-        }
+        caches.put("Object", new IFileCacheSoftApacheImpl(new StaticIFileLoader(iFileMap)));
+        return caches;
     }
 
-    private long testLookupPerformance(
-            IFileIOHelper.IFileArrays rawArrays, IFileCache cache, String warc, int lookups, Random random)
-            throws FileNotFoundException {
+    private long testLookupPerformance(String designation, IFileIOHelper.IFileArrays rawArrays, IFileCache cache,
+                                       String warc, int lookups, Random random) throws FileNotFoundException {
         final long startTime = System.currentTimeMillis();
         for (int i = 0 ; i < lookups ; i++) {
             int index = random.nextInt(rawArrays.size());
             long key = rawArrays.getKeys()[index];
-            Assert.assertNotNull("There should be a value for key " + key, cache.getIFileEntry(warc, key));
+            IFileEntry entry = cache.getIFileEntry(warc, key);
+            Assert.assertNotNull(designation + ". There should be a value for key " + key, entry);
+            Assert.assertEquals(designation + ". The newOffset should be correct",
+                                Long.valueOf(rawArrays.getValues1()[index]), entry.getNewOffset());
+            Assert.assertEquals(designation + ". The timestamp should be correct",
+                                Long.valueOf(rawArrays.getValues2()[index]), entry.getTimestamp());
         }
         return System.currentTimeMillis()-startTime;
     }
@@ -137,6 +222,12 @@ public class IFileCacheSoftImplTest {
         Random r = new Random(randomSeed);
         // Max original WARC-size 2GB
         long[] originalOffsets = r.longs(mapSize, 0,Integer.MAX_VALUE).sorted().toArray();
+        // Ensure monotonically increasing
+        for (int i = 1 ; i < originalOffsets.length ; i++) {
+            if (originalOffsets[i-1] >= originalOffsets[i]) {
+                originalOffsets[i] = originalOffsets[i-1]+1;
+            }
+        }
         long[] newOffsets = new long[mapSize];
         long[] timestamps = new long[mapSize];
         final long timeBase = (long) (r.nextDouble() * Integer.MAX_VALUE); // First timestamp in the WARC

@@ -1,16 +1,16 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata;
 
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
-import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong.IFileEntryMap;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trival.IFileTriValMap;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
 
-public class IFileEntryMapTest {
+public class IFileTriValMapTest {
 
     @Test
     public void testBasicMap() throws Exception {
-        IFileEntryMap map = createMap(
+        IFileTriValMap map = createMap(
                 1, 11, 101,
                 2, 21, 201,
                 3, 31, 301,
@@ -24,8 +24,23 @@ public class IFileEntryMapTest {
     }
 
     @Test
+    public void testBitBoundaries() throws Exception {
+        final long val28 = 0b1111_11111111_11111111_11111111;
+        IFileTriValMap map = createMap(
+                1, 11, 0x0,
+                val28<<3, val28<<3, val28,
+                (val28<<3)+1, 30, 0
+        );
+        System.out.println("Created test map " + map);
+        assertEquals(map.get(1).getTimestamp(), Long.valueOf(0x0),
+                     "Looking up key 1 should give the expected timestamp");
+        assertEquals(map.get(val28<<3).getTimestamp(), Long.valueOf(val28),
+                     "Looking up key val28<<3 (" + (val28<<3) + ") should give the expected timestamp");
+    }
+
+    @Test
     public void testValuesIteration() {
-        IFileEntryMap map = createMap(
+        IFileTriValMap map = createMap(
                 1, 11, 101,
                 2, 21, 201,
                 3, 31, 301
@@ -40,7 +55,7 @@ public class IFileEntryMapTest {
         }
     }
 
-    private IFileEntryMap createMap(int... elements) {
+    private IFileTriValMap createMap(long... elements) {
         if (elements.length % 3 != 0) {
             throw new IllegalArgumentException("The number of elements must be divisible by 0");
         }
@@ -53,7 +68,7 @@ public class IFileEntryMapTest {
             values1[i] = elements[i*3+1];
             values2[i] = elements[i*3+2];
         }
-        return new IFileEntryMap("dummy", keys, values1, values2);
+        return new IFileTriValMap("dummy", keys, values1, values2);
     }
 
 }

@@ -48,7 +48,7 @@ public class IFileGenericCache implements IFileCache {
         return ifileMap.get(oldOffset);
     }
 
-    private IFileMap loadFile(String oldFilename) throws FileNotFoundException {
+    public IFileMap loadFile(String oldFilename) throws FileNotFoundException {
         IFileMap ifileMap = cache.get(oldFilename);
         if (ifileMap == null) {
             ifileMap = iFileLoader.getIFileMap(oldFilename);

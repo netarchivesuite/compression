@@ -19,13 +19,4 @@ public class IFileEntryMap extends TriLongListMap<IFileEntry> implements IFileMa
         return new IFileEntry(value1, value2);
     }
 
-    @Override
-    protected long objectToValue1(IFileEntry object) {
-        return object.getKey();
-    }
-
-    @Override
-    protected long objectToValue2(IFileEntry object) {
-        return object.getValue();
-    }
 }
