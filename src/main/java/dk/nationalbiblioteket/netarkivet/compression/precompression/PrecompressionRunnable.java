@@ -71,6 +71,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             System.out.println("Thread # " + threadNo + ": File " + iFile.getAbsolutePath() + " already exists so skipping");
             return;
         }
+        System.out.println("Starting compression");
         File gzipFile = doCompression(inputFile);
         checkConsistency(inputFile, gzipFile);
         File cdxFile = new File(cdxSubdir, gzipFile.getName() + ".cdx");
