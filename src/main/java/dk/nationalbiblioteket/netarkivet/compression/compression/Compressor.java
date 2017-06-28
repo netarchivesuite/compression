@@ -7,15 +7,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 /**
  * Created by csr on 1/11/17.
@@ -27,24 +23,17 @@ public class Compressor{
 
     private void fillQueue(String filelistFilename, String blacklistFilename) throws IOException {
         this.filelistFilename = filelistFilename;
-        List<String> blacklisted = readBlacklist(filelistFilename);
-        sharedQueue.addAll(Files.readAllLines(Paths.get(filelistFilename)).stream().filter(predicate(blacklisted)).collect(Collectors.toList()));
+        List<String> blacklisted = readBlacklist(blacklistFilename);
+        sharedQueue.addAll(Util.getFilteredList(filelistFilename, blacklisted));
         writeCompressionLog("Sharedqueue now filled with " + sharedQueue.size() + " elements"); 
     }
 
-    private Predicate<String> predicate(List<String> blacklisted) {
-        return p -> !p.isEmpty() && !blacklisted.contains(p);
-    }
-
     private List<String> readBlacklist(String blacklistFilename) throws IOException {
-        //ClassLoader classLoader = getClass().getClassLoader();
-        //String blacklistFilename = "blacklisted_metadatafiles.txt"; // Located physically in src/main/resources/blacklisted_metadatafiles.txt
-        //File file = new File(classLoader.getResource(blacklistFilename).getFile());
         if (blacklistFilename == null) {
             writeCompressionLog("No blacklistfile was given as argument!");
             return new ArrayList<String>();
         }
-        List<String> blacklist = Files.readAllLines(Paths.get(blacklistFilename));
+        List<String> blacklist = Util.getAllLines(blacklistFilename);
         writeCompressionLog("Read " + blacklist.size() + " entries from blacklistfile: " + blacklistFilename);
         return blacklist;
     }

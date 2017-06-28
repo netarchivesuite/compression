@@ -6,9 +6,14 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.Properties;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by csr on 12/22/16.
@@ -120,6 +125,24 @@ public class Util {
     }
     public static String getLogPath() {
         return Util.getProperties().getProperty(Util.LOG);
+    }
+    
+    public static List<String> getFilteredList(String filelistFilename, List<String> blacklisted) throws IOException {
+        return getAllLines(filelistFilename).stream().filter(predicate(blacklisted)).collect(Collectors.toList());
+    }
+    
+    private static Predicate<String> predicate(List<String> blacklisted) {
+        return p -> !p.isEmpty() && !blacklisted.contains(getFilename(p));
+    }
+    
+    private static String getFilename(String p) {
+        String retValue = Paths.get(p).toFile().getName();
+        //System.out.println(retValue);
+        return retValue;
+    }
+
+    public static List<String> getAllLines(String filename) throws IOException {
+        return Files.readAllLines(Paths.get(filename));
     }
 
 }
