@@ -19,6 +19,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
@@ -58,25 +59,36 @@ public class CompressorRunnable extends CompressFile implements Runnable {
      */
     public boolean compress(String filename) throws DeeplyTroublingException, WeirdFileException, IOException {
         File inputFile = new File(filename);
+        if (!inputFile.exists() || !inputFile.isFile()) {
+            writeCompressionLog(inputFile.getAbsolutePath() + " was not compressed. File does not exist or represents a directory", threadNo);
+            return false;
+        }
         if (inputFile.length() == 0) {
             writeCompressionLog(inputFile.getAbsolutePath() + " was not compressed. Is zero size file.", threadNo);
             return false;
         }
         File gzipFile = doCompression(inputFile);
         validateMD5(gzipFile);
-        if (System.getProperty("os.name").contains("Windows")){
+        String osName = System.getProperty("os.name");
+        if (osName.contains("Windows")){
              if (gzipFile.getName().contains("metadata")) {
                  String newName = gzipFile.getName().replace("metadata", "oldmetadata"); 
                  File newFile = new File(gzipFile.getParentFile(), newName);
-                 writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath(),threadNo);
+                 writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath() + " on " +  osName,threadNo);
                  writeRename(gzipFile, newFile);
-                 //Files.move(gzipFile.toPath(), newFile.toPath());
-                 // TODO shouldn't we check if this command is succeeds???
-                 //TODO Don't we need this for Linus also??
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
+        } else if (osName.contains("Linux")){
+            if (gzipFile.getName().contains("metadata")) {
+                String newName = gzipFile.getName().replace("metadata", "oldmetadata");
+                File newFile = new File(gzipFile.getParentFile(), newName);
+                writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath() + " on " +  osName,threadNo);
+                writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath(),threadNo);
+                Files.move(gzipFile.toPath(), newFile.toPath());
+            }
         } else {
-            writeCompressionLog("ERROR: rename not implemented for linux", threadNo);
+            writeCompressionLog("ERROR: rename not implemented for " + osName + " operatingsystem", threadNo);
+            // Throw exception here ??
         }
         
         
@@ -87,8 +99,10 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                 writeCompressionLog(inputFile.getAbsolutePath() + " not set to writable. Unknown reason", threadNo);
             }
             System.gc(); // FIXME What is this good for??
-            inputFile.delete();
-            if (inputFile.exists()) {
+            boolean deleted = inputFile.delete();
+            if (!deleted) {
+                writeCompressionLog("WARNING: Trying to delete file '" 
+                        + inputFile.getAbsolutePath() + "', but failed. Trying with deleteOnExit()", threadNo);
                 inputFile.deleteOnExit();
             }
         } else {
