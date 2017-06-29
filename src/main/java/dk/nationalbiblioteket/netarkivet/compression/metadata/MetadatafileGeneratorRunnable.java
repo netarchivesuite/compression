@@ -82,7 +82,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
      * Takes a filename corresponding to an old-style uncompressed metadata file and creates a new
      * compressed metadata file with i) modified cdx records and ii) a new deduplication-info record.
      * Also renames the original file, replacing "metadata" in the name with "oldmetadata".
-     * If Util.METADATA_DIR is not null then the filename is interpreted relative to that. Otherwise it
+     * If Util.NMETADATA_DIR is not null or empty then the filename is interpreted relative to that. Otherwise it
      * is relative to current working dir.
      *
      * If the file has already been reprocessed, then this method returns false
@@ -111,7 +111,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             throw new NoSuchFileException("Input file " + inputFile.getAbsolutePath() + " not found, and file has not already been processed.");
         }
         String outputDir = properties.getProperty(Util.NMETADATA_DIR);
-        if (outputDir == null) {
+        if (outputDir == null || outputDir.trim().length() == 0) {
             outputDir = inputFile.getParentFile().getAbsolutePath();
         }
         final Path outputDirPath = Paths.get(outputDir);
@@ -397,11 +397,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
     }
     /**
      *
-     * @param crawllogPayloadIS
      * @return
      * @throws DeeplyTroublingException
      */
-
     private IFileCache getIFileCache() {
         if (Boolean.parseBoolean(Util.getProperties().getProperty(Util.USE_SOFT_CACHE))) {
             return IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
