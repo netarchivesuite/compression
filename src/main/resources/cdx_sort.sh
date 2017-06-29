@@ -41,6 +41,6 @@ tempfile=$(mktemp)
 echo "Sorting files in $dir to $output, using temporary file $tempfile."
 
 find $dir -type f -exec bash -c "cat '{}' >>$tempfile; if [ $delete -eq 1 ]; then rm '{}'; fi" \;
-LC_ALL_C sort -T $tempdir $tempfile > $output
+LC_ALL=C sort -T $tempdir $tempfile > $output
 rm $tempfile
 
