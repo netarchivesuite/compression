@@ -56,9 +56,9 @@ public class Util {
 
     private static File getSubdir(String rootDir, String uncompressedFileName, int depth,  boolean create) {
         getProperties();
-        String inputFilePrefix = uncompressedFileName.split("-")[0];
+        String inputFilePrefix = new StringBuilder(uncompressedFileName.split("-")[0]).reverse().toString();
         while ( inputFilePrefix.length() < depth )  {
-            inputFilePrefix = '0' + inputFilePrefix;
+            inputFilePrefix =  inputFilePrefix + '0';
         }
         inputFilePrefix = inputFilePrefix.substring(0, depth);
         File subdir = new File(rootDir);

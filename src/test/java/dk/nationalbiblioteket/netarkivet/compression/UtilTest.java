@@ -3,6 +3,7 @@ package dk.nationalbiblioteket.netarkivet.compression;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -47,6 +48,21 @@ public class UtilTest {
         //FileUtils.writeCollectionToFile(tempFile, filteredList);
         filteredList = Util.getFilteredList(actualFilelist.getAbsolutePath(), emptyBlacklist);
         assertEquals(filteredList.size(), 177298); // Nothing is filtered out
+    }
+
+    @Test
+    public void testSubdirs() {
+        Properties properties = new Properties();
+        Util.properties = properties;
+        properties.setProperty(Util.CDX_DEPTH, "4");
+        properties.setProperty(Util.IFILE_DEPTH, "4");
+        properties.setProperty(Util.IFILE_ROOT_DIR, "/foo/bar/ifiles");
+        properties.setProperty(Util.CDX_ROOT_DIR, "/foo/bar/cdx");
+        File file =  Util.getCDXSubdir("34-file.warc", false);
+        assertEquals(file.getAbsolutePath(), "/foo/bar/cdx/4/3/0/0");
+        file = Util.getCDXSubdir("128765-file.arc", false);
+        assertEquals(file.getAbsolutePath(), "/foo/bar/cdx/5/6/7/8");
+
     }
     
 }
