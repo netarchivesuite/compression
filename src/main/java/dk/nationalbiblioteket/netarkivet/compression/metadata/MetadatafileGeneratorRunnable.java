@@ -113,6 +113,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         String outputDir = properties.getProperty(Util.NMETADATA_DIR);
         if (outputDir == null || outputDir.trim().length() == 0) {
             outputDir = inputFile.getParentFile().getAbsolutePath();
+        } else {
+            File outputDirFile = Util.getNMetadataSubdir(inputFile.getName(), true);
+            outputDir = outputDirFile.getAbsolutePath();
         }
         final Path outputDirPath = Paths.get(outputDir);
         Files.createDirectories(outputDirPath);

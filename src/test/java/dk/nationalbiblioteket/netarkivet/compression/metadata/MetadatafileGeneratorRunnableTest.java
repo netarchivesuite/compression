@@ -57,6 +57,7 @@ public class MetadatafileGeneratorRunnableTest {
         Util.properties.put(Util.CDX_DEPTH, "0");
         Util.properties.put(Util.UPDATED_FILENAME_MD5_FILEPATH, NMETADATA_DIR + "/newchecksums");
         Util.properties.put(Util.USE_SOFT_CACHE, "true");
+        Util.properties.put(Util.NMETADATA_DEPTH, "4");
         FileUtils.removeRecursively(new File(workingRoot));
         FileUtils.copyDirectory(new File(originalRoot), new File(workingRoot));
         org.apache.commons.io.FileUtils.deleteDirectory(new File(NMETADATA_DIR));
@@ -67,7 +68,7 @@ public class MetadatafileGeneratorRunnableTest {
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
         File[] files = new File(working).listFiles((dir, name) -> {
-            return name.endsWith(".gz");
+            return name.endsWith(".gz") && !name.contains("oldmetadata");
         }) ;
         List<Object[]> list = new ArrayList<>();
         for (File file: files) {
@@ -86,7 +87,9 @@ public class MetadatafileGeneratorRunnableTest {
         path = path.replace("1.arc.gz", "4.arc.gz");
         path = path.replace("2.arc.gz", "4.arc.gz");
         path = path.replace("1.warc.gz", "4.warc.gz");
-        File output = new File(new File(NMETADATA_DIR), new File(path).getName());
+        File outputDir = Util.getNMetadataSubdir(inputFile.getName(), false);
+        //File output = new File(new File(NMETADATA_DIR), new File(path).getName());
+        File output = new File(outputDir, new File(path).getName());
         assertTrue(output.exists(), output.getAbsolutePath() + " should exist");
         assertTrue(output.length() > 0);
         assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
@@ -145,11 +148,11 @@ public class MetadatafileGeneratorRunnableTest {
 
     @Test
     public void testValidateNewWarcFile() throws Exception {
-        File input = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
-        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
+        File input = new File("src/test/data/WORKING/metadata/3-metadata-1.warc.gz");
+        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.warc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/metadata/3-metadata-1.warc.gz");
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.warc.gz" );
+        File output = new File(Util.getNMetadataSubdir("3-metadata-1.warc", false), "3-metadata-4.warc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
         assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
@@ -166,7 +169,7 @@ public class MetadatafileGeneratorRunnableTest {
         new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
+        File output = new File(Util.getNMetadataSubdir(input.getName(), false), "3-metadata-4.arc.gz" );
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
         assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
@@ -194,7 +197,7 @@ public class MetadatafileGeneratorRunnableTest {
         new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
         metadatafileGeneratorRunnable.processFile(originalMetadataFile.getAbsolutePath());
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
+        File output = new File(Util.getNMetadataSubdir("3-metadata-1.arc", false), "3-metadata-4.arc.gz" );
         File dedupCdxFile = new File(new File("cdx"), originalMetadataFile.getName() + ".cdx");
         assertTrue(dedupCdxFile.exists(), "dedupcdxfile does not exist: " + dedupCdxFile.getAbsolutePath());
         boolean isValid = ValidateMetadataOutput.compareCrawllogWithDedupcdxfile(originalMetadataFile, output, dedupCdxFile);

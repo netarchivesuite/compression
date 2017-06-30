@@ -33,6 +33,7 @@ public class Util {
     public static final String MD5_FILEPATH = "MD5_FILEPATH";
     public static final String LOG = "LOG";
     public static final String CDX_DEPTH = "CDX_DEPTH";
+    public static final String NMETADATA_DEPTH = "NMETADATA_DEPTH";
     public static final String THREADS = "THREADS";
     public static final String UPDATED_FILENAME_MD5_FILEPATH = "UPDATED_FILENAME_MD5_FILEPATH";
     public static final String COMPRESSION_LEVEL = "9";
@@ -51,6 +52,10 @@ public class Util {
 
     public static File getCDXSubdir(String uncompressedFileName, boolean create) {
         return getSubdir(properties.getProperty(CDX_ROOT_DIR), uncompressedFileName, Integer.parseInt(properties.getProperty(CDX_DEPTH)), create);
+    }
+
+    public static File getNMetadataSubdir(String uncompressedFileName, boolean create) {
+        return getSubdir(properties.getProperty(NMETADATA_DIR), uncompressedFileName, Integer.parseInt(properties.getProperty(NMETADATA_DEPTH, "0")), create);
     }
 
 
