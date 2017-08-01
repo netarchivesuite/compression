@@ -29,7 +29,6 @@
         </snapshotRepository>
     </distributionManagement>
 
-
     <repositories>
         <repository>
             <id>sbforge-nexus</id>
@@ -38,7 +37,6 @@
             <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
-
 
     <dependencies>
         <dependency>
@@ -60,7 +58,7 @@
         <dependency>
             <groupId>org.jwat</groupId>
             <artifactId>jwat-tools</artifactId>
-            <version>0.6.3</version>
+            <version>0.6.4</version>
         </dependency>
         <dependency>
             <groupId>org.netpreserve.openwayback</groupId>
