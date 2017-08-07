@@ -95,7 +95,7 @@
           <artifactId>logback-classic</artifactId>
           <version>1.2.3</version>
         </dependency>
-    </dependencies>
+       </dependencies>
 
     <build>
         <finalName>${project.artifactId}-${project.version}-${maven.build.timestamp}</finalName>
@@ -138,6 +138,7 @@
     <properties>
       <maven.compiler.source>1.8</maven.compiler.source>
       <maven.compiler.target>1.8</maven.compiler.target>
+      <maven.build.timestamp.format>ddMMyyyy-HHmm</maven.build.timestamp.format>
     </properties>
 
 </project>
