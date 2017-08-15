@@ -78,17 +78,6 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  writeRename(gzipFile, newFile);
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
-        } else if (osName.contains("Linux")){
-            if (gzipFile.getName().contains("metadata")) {
-                String newName = gzipFile.getName().replace("metadata", "oldmetadata");
-                File newFile = new File(gzipFile.getParentFile(), newName);
-                writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath() + " on " +  osName,threadNo);
-                writeCompressionLog("Trying to rename file " + gzipFile.getAbsolutePath() + " as " +  newFile.getAbsolutePath(),threadNo);
-                Files.move(gzipFile.toPath(), newFile.toPath());
-            }
-        } else {
-            writeCompressionLog("ERROR: rename not implemented for " + osName + " operatingsystem", threadNo);
-            // Throw exception here ??
         }
         
         
