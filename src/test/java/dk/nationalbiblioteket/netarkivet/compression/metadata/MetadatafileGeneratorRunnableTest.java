@@ -176,18 +176,19 @@ public class MetadatafileGeneratorRunnableTest {
         assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
     }
     
-    
+    @Test
     public void testValidateNewMetadataArcFile() throws Exception {
         File input = new File("src/test/data/WORKING/metadata/3-metadata-1.arc.gz");
-        new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz").delete();
+        File output = new File(new File(NMETADATA_DIR+"/3/0/0/0"), "3-metadata-4.arc.gz" );
+        File renamed =  new File("src/test/data/WORKING/metadata/3-oldmetadata-1.arc.gz");
+        renamed.delete();
         MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
-        metadatafileGeneratorRunnable.processFile("src/test/data/WORKING/3-metadata-1.arc.gz");
-        File output = new File(new File(NMETADATA_DIR), "3-metadata-4.arc.gz" );
+        metadatafileGeneratorRunnable.processFile(input.getAbsolutePath());
         assertTrue(output.exists());
         assertTrue(output.length() > 0);
         assertTrue(ARCReaderFactory.testCompressedARCFile(output), "Expected compressed file.");
         assertTrue(output.length() > input.length(), "Expect output file to be larger than input file.");
-        int recordDiff = ValidateMetadataOutput.getRecordDiff(input, output);
+        int recordDiff = ValidateMetadataOutput.getRecordDiff(renamed, output);
         assertEquals(recordDiff, 2, "Expect two new records, but difference was: " + recordDiff);
     }
     
