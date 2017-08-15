@@ -221,6 +221,9 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 byte[] payload = new byte[]{};
                 String url = recordBase.getUrlStr();
                 logger.debug("Thread #{}: Processing {} from {}.", threadNo, url, input.getAbsolutePath());
+                if (url.contains("filedesc://")) {
+                    continue;
+                }
                 Payload oldPayload = null;
                 File oldPayloadFile = File.createTempFile("arcrecord", "txt");
                 try {
