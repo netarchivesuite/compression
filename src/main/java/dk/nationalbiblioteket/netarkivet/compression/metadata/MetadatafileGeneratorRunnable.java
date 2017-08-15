@@ -401,10 +401,18 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                     String file = captureSearchResult.getFile();
                     long oldOffset = captureSearchResult.getOffset();
                     IFileCache iFileCache = getIFileCache();
-                    IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
-                    captureSearchResult.setOffset(iFileEntry.getNewOffset());
-                    captureSearchResult.setFile(file + ".gz");
-                    line = cdxFormat.serializeResult(captureSearchResult);
+                    try {
+                        IFileEntry iFileEntry = iFileCache.getIFileEntry(file, oldOffset);
+                        captureSearchResult.setOffset(iFileEntry.getNewOffset());
+                        captureSearchResult.setFile(file + ".gz");
+                        line = cdxFormat.serializeResult(captureSearchResult);
+                    } catch (Exception e) {
+                        // If there is no lookup for this record, it may be because it refers to a record
+                        // from a file which cannot be compressed. But the file may stil have valid archive data
+                        // so we just write the cdx record back unmodified. This has the side effect that the
+                        // new metadata file is still guaranteed to be larger than the original.
+                        logger.warn("Error processing '" + line + "' so just writing it back to output", e);
+                    }
                     if (!firstLine) {
                         sb.append("\n");
                     }
