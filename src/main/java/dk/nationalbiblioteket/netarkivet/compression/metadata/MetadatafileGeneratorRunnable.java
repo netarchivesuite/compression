@@ -127,10 +127,11 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
         Path outputFilePath = outputDirPath.resolve(newMetadataFilename);
         final File dedupCdxFile = new File(cdxDir, inputFile.getName() + ".cdx");
+        boolean foundCrawlLog = true;
         if (filename.endsWith(".warc") || filename.endsWith(".warc.gz")) {
-            processWarcfile(inputFile, outputFilePath.toFile(), dedupCdxFile);
+            foundCrawlLog = processWarcfile(inputFile, outputFilePath.toFile(), dedupCdxFile);
         } else if (filename.endsWith(".arc") ||filename.endsWith(".arc.gz")) {
-            processArcfile(inputFile, outputFilePath.toFile(), dedupCdxFile);
+            foundCrawlLog = processArcfile(inputFile, outputFilePath.toFile(), dedupCdxFile);
         } else {
             throw new WeirdFileException("Input metadata file is neither arc nor warc: " + filename);
         }
@@ -144,9 +145,15 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         writeMD5UpdatedFilename(dest);
         File newMetadataFile = outputFilePath.toFile();
         writeMD5UpdatedFilename(newMetadataFile);
-        boolean isValid = validateMetadataFileGeneration(dest, newMetadataFile, dedupCdxFile);
-        if (!isValid) {
-            logger.warn("Thread #{}: Metadata validation of output of '{}' failed", threadNo, inputFile.getAbsolutePath() );
+        if (foundCrawlLog) {
+            boolean isValid = validateMetadataFileGeneration(dest, newMetadataFile, dedupCdxFile);
+            if (!isValid) {
+                logger.warn("Thread #{}: Metadata validation of output of '{}' failed", threadNo, inputFile.getAbsolutePath());
+            }
+        } else {
+            // There's really no need to validate anything here. The metadata is just a record of a job that never ran for
+            // some reason. It has no reference to any archival content.
+            logger.info("Thread #{}: No crawl log was found in {} so no validation was carried out.", threadNo, inputFile.getAbsolutePath());
         }
 
         logger.info("Thread #{}: Finished done processing file '{}'", threadNo, inputFile.getAbsolutePath());
@@ -207,8 +214,18 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return warnings == 0;
     }
 
-    private void processArcfile(File input, File output, File dedupCdxFile) throws IOException, DeeplyTroublingException {
+    /**
+     *
+     * @param input
+     * @param output
+     * @param dedupCdxFile
+     * @return true iff a crawl log was found
+     * @throws IOException
+     * @throws DeeplyTroublingException
+     */
+    private boolean processArcfile(File input, File output, File dedupCdxFile) throws IOException, DeeplyTroublingException {
         logger.info("Thread #{}: Processing ARC input file {} with outputfile {}.", threadNo, input.getAbsolutePath(), output.getAbsolutePath());
+        boolean foundCrawlLog = false;
         MetadataFileWriter writer = null;
         try (
                 InputStream is = new FileInputStream(input);
@@ -235,6 +252,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             Files.copy(oldPayloadIS, oldPayloadFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                         }
                         if (url.contains("crawl.log")) {
+                            foundCrawlLog = true;
                             byte[][] dedupPayload = null;
                             try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
                                 dedupPayload = getDedupPayload(oldPayloadIS);
@@ -273,10 +291,21 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             }
         }
         logger.info("Thread #{}: Finished processing ARC input file {}", threadNo, input.getAbsolutePath());
+        return foundCrawlLog;
     }
 
-    private void processWarcfile(File input, File output, File dedupCdxFile) throws IOException, DeeplyTroublingException {
+    /**
+     *
+     * @param input
+     * @param output
+     * @param dedupCdxFile
+     * @return true iff a crawl log was found
+     * @throws IOException
+     * @throws DeeplyTroublingException
+     */
+    private boolean processWarcfile(File input, File output, File dedupCdxFile) throws IOException, DeeplyTroublingException {
         logger.info("Thread #{}: Processing WARC input file {} with outputfile {}.", threadNo, input.getAbsolutePath(), output.getAbsolutePath());
+        boolean foundCrawlLog = false;
         MetadataFileWriter writer = null;
         try (
                 InputStream is = new FileInputStream(input);
@@ -309,6 +338,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             //Note that in the case of the crawl log we add two new records, whereas in the case of
                             //the cdx records we alter the record.
                             if (uriLine.value.contains("crawl.log")) {
+                                foundCrawlLog = true;
                                 byte[][] dedupPayload = null;
                                 try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
                                     dedupPayload = getDedupPayload(oldPayloadIS);
@@ -347,6 +377,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             }
         }
         logger.info("Thread #{}: Finished processing WARC input file {}", threadNo, input.getAbsolutePath());
+        return foundCrawlLog;
     }
 
     private byte[] getUpdatedCdxPayload(InputStream cdxPayloadIS) throws DeeplyTroublingException, FileNotFoundException {
