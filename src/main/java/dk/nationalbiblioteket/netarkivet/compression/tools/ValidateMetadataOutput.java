@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGeneratorRunnable;
 import org.apache.commons.io.IOUtils;
 import org.archive.io.ArchiveRecord;
 import org.archive.io.arc.ARCReader;
@@ -22,8 +23,13 @@ import dk.netarkivet.common.utils.archive.GetMetadataArchiveBatchJob;
 import dk.netarkivet.common.utils.batch.BatchLocalFiles;
 import dk.netarkivet.common.utils.batch.FileBatchJob;
 import dk.netarkivet.harvester.harvesting.metadata.MetadataFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ValidateMetadataOutput {
+
+    static Logger logger = LoggerFactory.getLogger(ValidateMetadataOutput.class);
+
 
     public static void main(String[] args) throws IOException {
         if (args.length != 2) {
@@ -144,14 +150,14 @@ public class ValidateMetadataOutput {
         int duplicateLinesInNew = findDuplicateLinesInCrawlog(newMetadataFile);
         //System.out.println("crawlog duplicateLines in new: " + duplicateLinesInNew);
         if (duplicateLinesInNew != duplicateLinesInOriginal){
-            System.err.println("WARNING: crawlog duplicateLines in original and in new metadata file is not identical. Original file '" 
+            logger.warn("Crawlog duplicateLines in original and in new metadata file is not identical. Original file '"
                     + originalMetadataFile.getAbsolutePath() + "' has #lines=" + duplicateLinesInOriginal 
                     + ", but new file '" + newMetadataFile.getAbsolutePath() + "' has #lines= " +  duplicateLinesInNew);
         }
         
         List<String> lines = FileUtils.readListFromFile(dedupCdxFile);
         if (lines.size() != duplicateLinesInNew) {
-            System.err.println("WARNING: crawlog duplicateLines (" + duplicateLinesInNew + ") in file '" + newMetadataFile.getAbsolutePath() 
+            logger.warn("Crawlog duplicateLines (" + duplicateLinesInNew + ") in file '" + newMetadataFile.getAbsolutePath()
                     + "' does not match # lines in dedupCdxFile '" + dedupCdxFile.getAbsolutePath()  + "': " + lines.size());
             return false;
         }

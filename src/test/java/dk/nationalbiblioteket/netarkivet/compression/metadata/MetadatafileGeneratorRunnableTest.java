@@ -162,6 +162,26 @@ public class MetadatafileGeneratorRunnableTest {
         assertEquals(recordDiff, 2, "Expect two new records.");
         
     }
+
+
+    public void testValidateNewWarcFileMultiCDX() throws Exception {
+        File input = new File("src/test/data/WORKING/metadata/6036-metadata-1.warc.gz");
+        File renamed = new File("src/test/data/WORKING/metadata/6036-oldmetadata-1.warc.gz");
+        File output = new File(Util.getNMetadataSubdir("6036-metadata-1.warc", false), "6036-metadata-4.warc.gz" );
+        output.delete();
+        renamed.delete();
+        MetadatafileGeneratorRunnable metadatafileGeneratorRunnable = new MetadatafileGeneratorRunnable(null, 0);
+        metadatafileGeneratorRunnable.processFile(input.getAbsolutePath());
+        assertTrue(output.exists());
+        assertTrue(output.length() > 0);
+        assertTrue(WARCReaderFactory.testCompressedWARCFile(output), "Expected compressed file.");
+        assertTrue(output.length() > renamed.length(), "Expect output file to be larger than input file.");
+        //File originalRenamedInput = new File(input.getParentFile(), "3-oldmetadata-1.warc.gz");
+        int recordDiff = ValidateMetadataOutput.getRecordDiff(renamed, output);
+        assertEquals(recordDiff, 2, "Expect two new records.");
+
+    }
+
     
     @Test
     public void testProcessArcFile() throws Exception {
