@@ -255,7 +255,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             foundCrawlLog = true;
                             byte[][] dedupPayload = null;
                             try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
-                                dedupPayload = getDedupPayload(oldPayloadIS);
+                                dedupPayload = getDedupPayload(oldPayloadIS, oldPayloadFile);
                             }
                             writer.write(dedupURI, "text/plain", recordBase.getIpAddress(),
                                     System.currentTimeMillis(), dedupPayload[0]);
@@ -263,8 +263,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             writer.write(dedupCdxURI, "text/plain", recordBase.getIpAddress(), System.currentTimeMillis(), dedupPayload[1]);
                             logger.debug("Thread #{}: Writing {} bytes to dedupcdx for {}.", threadNo, dedupPayload[1].length, output.getAbsolutePath());
 
-                            logger.debug("Thread #{}: Creating dedup cdx file {}.", threadNo, dedupCdxFile.getAbsolutePath());
-                            FileUtils.writeByteArrayToFile(dedupCdxFile, dedupPayload[1]);
+                            if (dedupPayload[1].length > 0) {
+                                logger.debug("Thread #{}: Creating dedup cdx file {}.", threadNo, dedupCdxFile.getAbsolutePath());
+                                FileUtils.writeByteArrayToFile(dedupCdxFile, dedupPayload[1]);
+                            }
                         }
                         if (url.contains("index/cdx")) {
                             try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
@@ -341,13 +343,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                                 foundCrawlLog = true;
                                 byte[][] dedupPayload = null;
                                 try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
-                                    dedupPayload = getDedupPayload(oldPayloadIS);
+                                    dedupPayload = getDedupPayload(oldPayloadIS, oldPayloadFile);
                                 }
                                 writer.write(dedupURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[0]);
                                 logger.debug("Thread #{}: Writing {} bytes to dedupmigration record for {}.", threadNo, dedupPayload[0].length, output.getAbsolutePath());
                                 writer.write(dedupCdxURI, "text/plain", valueOrNull(hostIpLine), System.currentTimeMillis(), dedupPayload[1]);
                                 logger.debug("Thread #{}: Writing {} bytes to deduplicationcdx record for {}.", threadNo, dedupPayload[1].length, output.getAbsolutePath());
                                 if (dedupPayload[1].length > 0) {
+                                    logger.debug("Thread #{}: Creating dedup cdx file {}.", threadNo, dedupCdxFile.getAbsolutePath());
                                     FileUtils.writeByteArrayToFile(dedupCdxFile, dedupPayload[1]);
                                 }
                                 writer.writeTo(oldPayloadFile, valueOrNull(uriLine), valueOrNull(contentTypeLine));
@@ -453,16 +456,19 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         }
     }
 
-    private byte[][] getDedupPayload(InputStream crawllogPayloadIS) throws DeeplyTroublingException {
+    private byte[][] getDedupPayload(InputStream crawllogPayloadIS, File originalFile) throws DeeplyTroublingException {
         final IFileCache iFileCache = getIFileCache();
         StringBuffer migrationOutput = new StringBuffer();
         StringBuffer cdxOutput = new StringBuffer();
+        int dedupEntriesFound=0;
+        int dedupEntriesFailed=0;
         DeduplicateToCDXAdapter adapter = new DeduplicateToCDXAdapter();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(crawllogPayloadIS))) {
             boolean firstLine = true;
             String line;
             while ((line = br.readLine()) != null && line.trim().length() > 0) {
                 if (line.contains("duplicate:")) {
+                    dedupEntriesFound++;
                     try {
                         String original = adapter.adaptLine(line);
                         if (original != null) {
@@ -481,17 +487,22 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             cdxOutput.append(StringUtils.join(split, ' '));
                         } else {
                             logger.warn("Thread #{}: adapter.adaptLine of duplicate line '{}' failed. Line ignored", threadNo, line);
+                            dedupEntriesFailed++;
                         }
                     } catch (AlreadyKnownMissingFileException e) {
-                        //logger.warn("Error parsing '{}'.", line, e);
+                            //logger.warn("Error parsing '{}'.", line, e);
+                            dedupEntriesFailed++;
                     } catch (Exception e) {
                             logger.warn("Error parsing '{}'.", line, e);
+                            dedupEntriesFailed++;
                     }
                 }
             }
         } catch (IOException e) {
             throw new DeeplyTroublingException(e);
         }
+        logger.info("Thread #{}: DedupEntries found/failed for file '{}':{}/{}", 
+                threadNo, originalFile.getAbsolutePath(), dedupEntriesFound, dedupEntriesFailed);
         logger.trace("Thread #{}: Cache size: {}", threadNo, iFileCache.getCurrentCachesize());
         return new byte[][] {migrationOutput.toString().getBytes(), cdxOutput.toString().getBytes()};
     }
