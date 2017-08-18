@@ -273,7 +273,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         }
                         if (url.contains("index/cdx")) {
                             try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
-                                payload = getUpdatedCdxPayload(oldPayloadIS);
+                                payload = getUpdatedCdxPayload(oldPayloadIS, input.getAbsolutePath());
                             }
                             url = url.replace(".arc", ".arc.gz");
                             logger.debug("Thread #{}: Writing {} bytes to migrated cdx for {}.", threadNo, payload.length, output.getAbsolutePath());
@@ -362,7 +362,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             } else if (uriLine.value.contains("index/cdx")) {
                                 uriLine.value = uriLine.value.replace("arc", "arc.gz");
                                 try (InputStream oldPayloadIS = new FileInputStream(oldPayloadFile)) {
-                                    newPayloadBytes = getUpdatedCdxPayload(oldPayloadIS);
+                                    newPayloadBytes = getUpdatedCdxPayload(oldPayloadIS, input.getAbsolutePath());
                                 }
                                 logger.debug("Thread #{}: Writing {} bytes to migrated cdx for {}.", threadNo, newPayloadBytes.length, output.getAbsolutePath());
                                 writer.write(valueOrNull(uriLine),
@@ -388,7 +388,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
         return foundCrawlLog;
     }
 
-    private byte[] getUpdatedCdxPayload(InputStream cdxPayloadIS) throws DeeplyTroublingException, FileNotFoundException {
+    private byte[] getUpdatedCdxPayload(InputStream cdxPayloadIS, String inputPath) throws DeeplyTroublingException, FileNotFoundException {
         String cdxSpec = " CDX A r b m S g V k";
         CDXFormat cdxFormat = null;
         try {
@@ -419,7 +419,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         // from a file which cannot be compressed. But the file may stil have valid archive data
                         // so we just write the cdx record back unmodified. This has the side effect that the
                         // new metadata file is still guaranteed to be larger than the original.
-                        logger.warn("Error processing '" + line + "' so just writing it back to output", e);
+                        logger.warn("Error processing '{}' in {} so just writing it back to output", line, inputPath, e);
                     }
                     if (!firstLine) {
                         sb.append("\n");
@@ -429,7 +429,7 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 } catch (AlreadyKnownMissingFileException e) {
                     //logger.warn("Error processing '" + line + "'", e);
                 } catch (Exception e) {
-                    logger.warn("Error processing '" + line + "'", e);
+                    logger.warn("Error processing line '{}' in {}.", line, inputPath, e);
                 }
 
  /*               catch (Exception e) {
@@ -491,14 +491,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             split[7] = "" + iFileEntry.getNewOffset();
                             cdxOutput.append(StringUtils.join(split, ' '));
                         } else {
-                            logger.warn("Thread #{}: adapter.adaptLine of duplicate line '{}' failed. Line ignored", threadNo, line);
+                            logger.warn("Thread #{}: adapter.adaptLine of duplicate line '{}' in {} failed. Line ignored", threadNo, line, originalFilePath);
                             dedupEntriesFailed++;
                         }
                     } catch (AlreadyKnownMissingFileException e) {
                             //logger.warn("Error parsing '{}'.", line, e);
                             dedupEntriesFailed++;
                     } catch (Exception e) {
-                            logger.warn("Error parsing '{}'.", line, e);
+                            logger.warn("Error parsing '{}' in  {}.", line, originalFilePath, e);
                             dedupEntriesFailed++;
                     }
                 }
