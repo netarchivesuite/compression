@@ -495,10 +495,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             dedupEntriesFailed++;
                         }
                     } catch (AlreadyKnownMissingFileException e) {
-                            //logger.warn("Error parsing '{}'.", line, e);
+                            logger.warn("Thread #{}: AlreadyKnownMissingFileException in duplicate line '{}' in file {}.", threadNo, line, originalFilePath, e);
                             dedupEntriesFailed++;
                     } catch (Exception e) {
-                            logger.warn("Error parsing '{}' in  {}.", line, originalFilePath, e);
+                            logger.warn("Thread #{}: Error parsing duplicate line '{}' in  {}.", threadNo, line, originalFilePath, e);
                             dedupEntriesFailed++;
                     }
                 }
