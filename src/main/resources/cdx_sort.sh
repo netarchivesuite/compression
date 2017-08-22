@@ -48,6 +48,6 @@ tempfile=$(mktemp)
 echo "Sorting files in $dirs matching $regex to $output, using temporary file $tempfile."
 
 find $dirs -type f -name "$regex" -exec bash -c "echo >> '{}'; cat '{}' >>$tempfile; if [ $delete -eq 1 ]; then rm '{}'; fi" \;
-LC_ALL=C sort -T -u $tempdir $tempfile > $output
+LC_ALL=C sort -u -T  $tempdir $tempfile > $output
 rm $tempfile
 
