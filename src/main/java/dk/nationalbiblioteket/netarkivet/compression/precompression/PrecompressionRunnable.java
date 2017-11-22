@@ -3,17 +3,17 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-
-import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
-import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
-
-import org.apache.commons.codec.digest.DigestUtils;
-
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.nio.file.Files;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.concurrent.BlockingQueue;
+import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
@@ -24,17 +24,14 @@ import org.jwat.common.UriProfile;
 import org.jwat.tools.tasks.cdx.CDXEntry;
 import org.jwat.tools.tasks.cdx.CDXFile;
 import org.jwat.tools.tasks.cdx.CDXFormatter;
+import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXResult;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.util.concurrent.BlockingQueue;
-import java.util.zip.GZIPInputStream;
-import java.lang.StringBuilder;
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
+import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 
 /**
  * Created by csr on 12/8/16.
@@ -167,11 +164,16 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws DeeplyTroublingException, WeirdFileException {
-        CDXFormatter formatter = new CDXFormatter();
-        CDXFile uncompressedCDXFile = new CDXFile();
-        CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile);
+    	final int recordHeaderMaxSize = 1024 * 1024;
+        final int payloadHeaderMaxSize = 1024 * 1024;
+    	CDXFormatter formatter = new CDXFormatter();
+        CDXOptions cdxOptions = new CDXOptions();
+        cdxOptions.recordHeaderMaxSize = recordHeaderMaxSize;
+        cdxOptions.payloadHeaderMaxSize = payloadHeaderMaxSize;
+    	CDXFile uncompressedCDXFile = new CDXFile();
+        CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile, cdxOptions);
         CDXFile compressedCDXFile = new CDXFile();
-        CDXResult compressedResult = compressedCDXFile.processFile(compressedFile);
+        CDXResult compressedResult = compressedCDXFile.processFile(compressedFile, cdxOptions);
         Iterator<CDXEntry> ocdxIt = uncompressedResult.getEntries().iterator();
         Iterator<CDXEntry> ncdxIt = compressedResult.getEntries().iterator();
         String waybackCdxSpec = " CDX N b a m s k r V g";
