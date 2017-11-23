@@ -41,6 +41,9 @@ public class Util {
     public static final String USE_SOFT_CACHE = "USE_SOFT_CACHE";
 
     private static final Pattern METADATA_NAME_PATTERN = Pattern.compile("(.*-)([0-9]+)(.(w)?arc)(.gz)?");
+    public static final String RECORD_HEADER_MAXSIZE = "RECORD_HEADER_MAXSIZE";
+    public static final String PAYLOAD_HEADER_MAXSIZE = "PAYLOAD_HEADER_MAXSIZE";
+    
 
 
     public static Properties properties;

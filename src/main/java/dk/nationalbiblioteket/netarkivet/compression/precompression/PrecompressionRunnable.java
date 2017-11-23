@@ -47,6 +47,9 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     private ArcIndexer arcIndexer = new ArcIndexer();
     private WarcIndexer warcIndexer = new WarcIndexer();
     private UrlCanonicalizer canonicalizer = new AggressiveUrlCanonicalizer();
+    
+    private final int defaultRecordHeaderMaxSize = 1024 * 1024;
+    private final int defaultPayloadHeaderMaxSize = 1024 * 1024;
 
     public PrecompressionRunnable(BlockingQueue<String> sharedQueue, int threadNo) {
         this.sharedQueue = sharedQueue;
@@ -164,8 +167,8 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
     private void writeiFile(File uncompressedFile, File compressedFile, File iFile, File cdxFile) throws DeeplyTroublingException, WeirdFileException {
-    	final int recordHeaderMaxSize = 1024 * 1024;
-        final int payloadHeaderMaxSize = 1024 * 1024;
+    	final int recordHeaderMaxSize = getIntProperty(Util.RECORD_HEADER_MAXSIZE, defaultRecordHeaderMaxSize);
+        final int payloadHeaderMaxSize = getIntProperty(Util.PAYLOAD_HEADER_MAXSIZE, defaultPayloadHeaderMaxSize);
     	CDXFormatter formatter = new CDXFormatter();
         CDXOptions cdxOptions = new CDXOptions();
         cdxOptions.recordHeaderMaxSize = recordHeaderMaxSize;
@@ -190,6 +193,16 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             }
         } catch (IOException | NullPointerException e) {
             throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
+        }
+    }
+
+    private int getIntProperty(String propertyKey, int defaultPropertyValue) {
+        String propertyValue = Util.getProperties().getProperty(propertyKey);
+        if (propertyValue == null) {
+            return defaultPropertyValue;
+        } else {
+            int propertyValueInt = Integer.decode(propertyValue);
+            return propertyValueInt;
         }
     }
 
