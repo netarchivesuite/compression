@@ -12,7 +12,7 @@ import java.util.Map;
  */
 public interface IFileCache {
 
-    IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException;
+    IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException, CacheMissException;
 
     Iterator<Map.Entry<Long, IFileEntry>> getOrderedListing(String oldFilename) throws FileNotFoundException;
 
