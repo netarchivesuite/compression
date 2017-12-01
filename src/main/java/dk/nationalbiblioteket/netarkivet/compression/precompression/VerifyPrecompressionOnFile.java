@@ -41,8 +41,15 @@ public class VerifyPrecompressionOnFile {
         Util.properties.put(Util.TEMP_DIR, "output");
         Util.properties.put(Util.THREADS, "10");
         Util.properties.put(Util.LOG, "output/log");
+        Util.properties.put(Util.CACHE_SIZE, "1000");
+        Util.properties.put(Util.PAYLOAD_HEADER_MAXSIZE, (64 * 1024) + "");
+        Util.properties.put(Util.RECORD_HEADER_MAXSIZE, (64 * 1024) + "");
+        
         File ifileSubdir = Util.getIFileSubdir(inputFile.getName(), false);
         File ifile = new File(ifileSubdir, inputFile.getName() + ".ifile.cdx");
+        if (ifile.exists()) {
+            ifile.delete();
+        }
         PrecompressionRunnable consumer = new PrecompressionRunnable(null, 0);
         consumer.precompress(inputFile.getAbsolutePath());
         if (ifile.exists()) {
@@ -74,7 +81,6 @@ public class VerifyPrecompressionOnFile {
         for (String i: ifiles) {
             i1++;
             String[] splitLine = StringUtils.split(i);
-            //System.out.println("# " + i1 + ": " + splitLine[0]);
             Long offset = Long.valueOf(splitLine[0]);
             offsets.add(offset);
         }
@@ -92,8 +98,18 @@ public class VerifyPrecompressionOnFile {
             }
         }
         System.out.println("Of the " + records.size() + " cdxrecords generated, we found " 
-                +  found + " in the ifile. Missing is " +  missing);
+                +  found + " in the ifile '" + ifile.getAbsolutePath() + "'. Missing is " +  missing);
         
+        // Testing ifiles lookup
+        /*
+        String name = "246017-241-20151219185049-00090-sb-prod-har-002.statsbiblioteket.dk.warc";
+        IFileCache cache  = IFileCacheFactory.getIFileCache(new IFileTriLongLoaderImpl());
+        IFileCache cache1 = IFileCacheFactory.getIFileCache(new IFileLoaderImpl());
+        IFileEntry iFileEntry = cache.getIFileEntry(name, Long.parseLong("2"));
+        IFileEntry iFileEntry1 = cache1.getIFileEntry(name, Long.parseLong("2"));
+        System.out.println(iFileEntry);
+        System.out.println(iFileEntry1);
+        */
     }
     
     public static List<CDXRecord> getRecords(File cdxFile) throws IOException {
