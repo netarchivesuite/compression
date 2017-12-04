@@ -1,5 +1,6 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased;
 
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.CacheMissException;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
 
 import java.io.FileNotFoundException;
@@ -54,9 +55,13 @@ public class IFileCacheSoftImpl implements IFileCache {
 
 
     @Override
-    public synchronized IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException {
+    public synchronized IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException, CacheMissException {
         ConcurrentSkipListMap<Long, IFileEntry> ifileMap = loadFile(oldFilename);
-        return ifileMap.get(oldOffset);
+        final IFileEntry iFileEntry = ifileMap.get(oldOffset);
+        if (iFileEntry == null) {
+            throw new CacheMissException();
+        }
+        return iFileEntry;
     }
 
     private ConcurrentSkipListMap<Long, IFileEntry> loadFile(String oldFilename) throws FileNotFoundException {
