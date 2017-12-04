@@ -1,19 +1,25 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.compress.utils.IOUtils;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
@@ -32,6 +38,8 @@ import org.jwat.tools.tasks.compress.CompressOptions;
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+import dk.netarkivet.common.utils.cdx.CDXRecord;
+import dk.netarkivet.common.utils.cdx.CDXUtils;
 
 /**
  * Created by csr on 12/8/16.
@@ -170,26 +178,56 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         CDXOptions cdxOptions = new CDXOptions();
         cdxOptions.recordHeaderMaxSize = recordHeaderMaxSize;
         cdxOptions.payloadHeaderMaxSize = payloadHeaderMaxSize;
+        List<CDXRecord> wacCdxRecords;
+        // Uncompressed CDXRecords.
     	CDXFile uncompressedCDXFile = new CDXFile();
         CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile, cdxOptions);
+        if (uncompressedResult.hasFailed()) {
+        	throw new WeirdFileException("CDX generation of " + uncompressedFile.getAbsolutePath() + "failed!");
+        }
+        wacCdxRecords = getCDXRecordsUsingWAC(uncompressedFile);
+        if (wacCdxRecords == null) {
+        	throw new WeirdFileException("CDX validation of " + uncompressedFile.getAbsolutePath() + "failed!");
+        }
+        compareCdxRecords(wacCdxRecords, uncompressedResult.getEntries());
+        // Compressed CDXRecords.
         CDXFile compressedCDXFile = new CDXFile();
         CDXResult compressedResult = compressedCDXFile.processFile(compressedFile, cdxOptions);
-        Iterator<CDXEntry> ocdxIt = uncompressedResult.getEntries().iterator();
-        Iterator<CDXEntry> ncdxIt = compressedResult.getEntries().iterator();
+        if (compressedResult.hasFailed()) {
+        	throw new WeirdFileException("CDX generation of " + compressedFile.getAbsolutePath() + "failed!");
+        }
+        wacCdxRecords = getCDXRecordsUsingWAC(compressedFile);
+        if (wacCdxRecords == null) {
+        	throw new WeirdFileException("CDX validation of " + compressedFile.getAbsolutePath() + "failed!");
+        }
+        compareCdxRecords(wacCdxRecords, compressedResult.getEntries());
+        // Generate ifile and cdx file.
+        List<CDXEntry> ocdx = uncompressedResult.getEntries();
+        List<CDXEntry> ncdx = compressedResult.getEntries();
+        CDXEntry oEntry;
+        CDXEntry nEntry;
         String waybackCdxSpec = " CDX N b a m s k r V g";
         try (
                 PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
                 PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(cdxFile, true)))
         ) {
+        	int idx = 0;
             cdxWriter.println(waybackCdxSpec);
-            while (ocdxIt.hasNext() && ncdxIt.hasNext()) {
-                CDXEntry oEntry = ocdxIt.next();
-                CDXEntry nEntry = ncdxIt.next();
+            while (idx < ocdx.size() && idx < ncdx.size()) {
+                oEntry = ocdx.get(idx);
+                nEntry = ncdx.get(idx);
                 ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + oEntry.date.getTime());
                 cdxWriter.println(formatter.cdxEntry(nEntry,compressedFile.getName(),"NbamskrVg".toCharArray()));
+                ++idx;
             }
-        } catch (IOException | NullPointerException e) {
-            throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), e);
+            if (idx < ocdx.size()) {
+            	throw new WeirdFileException(uncompressedFile.getAbsolutePath() + " has more entries than " + compressedFile.getAbsolutePath());
+            }
+            if (idx < ncdx.size()) {
+            	throw new WeirdFileException(compressedFile.getAbsolutePath() + " has more entries than " + uncompressedFile.getAbsolutePath());
+            }
+        } catch (Throwable t) {
+            throw new WeirdFileException("Problem indexing files " + uncompressedFile.getAbsolutePath() + " " + compressedFile.getAbsolutePath(), t);
         }
     }
 
@@ -332,7 +370,79 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         return sb.toString();
     }
 
+    public List<CDXRecord> getCDXRecordsUsingWAC(File inputFile) {
+        ByteArrayOutputStream bOut = null;
+        ByteArrayInputStream bIn = null;
+        BufferedReader reader = null;
+        List<CDXRecord> entries = new ArrayList<CDXRecord>();
+        try {
+            bOut = new ByteArrayOutputStream();
+            CDXUtils.writeCDXInfo(inputFile, bOut);
+            bIn = new ByteArrayInputStream(bOut.toByteArray());
+            reader = new BufferedReader(new InputStreamReader(bIn, "UTF-8"));
+            String tmpStr;
+            while ((tmpStr = reader.readLine()) != null) {
+                String[] fieldParts = tmpStr.split("\\s+");
+                CDXRecord cdxrec = null;
+                try {
+                    cdxrec = new CDXRecord(fieldParts);
+                    entries.add(cdxrec);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Throwable t) {
+        	entries = null;
+        	t.printStackTrace();
+        } finally {
+            if (bOut != null) {
+                bOut.reset();
+            }
+            IOUtils.closeQuietly(bOut);
+            IOUtils.closeQuietly(bIn);
+            IOUtils.closeQuietly(reader);
+        }
+        return entries;
+    }
+
+    public boolean compareCdxRecords(List<CDXRecord> wacCdxRecords, List<CDXEntry> jwatCdxEntries) throws WeirdFileException {
+    	CDXRecord wacCdxRecord;
+    	CDXEntry jwatCdxEntry;
+    	int idx = 0;
+    	while (idx < wacCdxRecords.size() && idx < jwatCdxEntries.size()) {
+    		wacCdxRecord = wacCdxRecords.get(idx);
+    		jwatCdxEntry = jwatCdxEntries.get(idx);
+    		if (wacCdxRecord.getOffset() != jwatCdxEntry.offset) {
+        		throw new WeirdFileException("Offsets differ: " + wacCdxRecord.getOffset() + " - " + jwatCdxEntry.offset);
+    		}
+    		/*
+    		if (wacCdxRecord.getLength() != jwatCdxEntry.length) {
+        		throw new WeirdFileException("Lengths differ: " + wacCdxRecord.getLength() + " - " + jwatCdxEntry.length);
+    		}
+    		*/
+    		if (wacCdxRecord.getURL().compareToIgnoreCase(jwatCdxEntry.url) != 0) {
+        		throw new WeirdFileException("Urls differ: " + wacCdxRecord.getURL() + " - " + jwatCdxEntry.url);
+    		}
+    		/*
+    		if (wacCdxRecord.getMimetype().compareToIgnoreCase(jwatCdxEntry.mimetype) != 0) {
+        		throw new WeirdFileException("Mimwtypes differ: " + wacCdxRecord.getMimetype() + " - " + jwatCdxEntry.mimetype);
+    		}
+    		*/
+    		if (wacCdxRecord.getDate().compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
+        		throw new WeirdFileException("Dates differ: " + wacCdxRecord.getDate() + " - " + jwatCdxEntry.date);
+    		}
+    		++idx;
+    	}
+    	if (idx < wacCdxRecords.size()) {
+    		throw new WeirdFileException("Number of records not identical: nascdx=" + wacCdxRecords.size() + " offset=" + wacCdxRecords.get(idx).getOffset() + " > jwatcdx=" + jwatCdxEntries.size());
+    	}
+    	if (idx < jwatCdxEntries.size()) {
+    		throw new WeirdFileException("Number of records not identical: jwatcdx=" + jwatCdxEntries.size() + " offset=" + jwatCdxEntries.get(idx).offset + " > nascdx=" + wacCdxRecords.size());
+    	}
+    	return false;
+    }
+
     private static class DEBUG {
     }
-}
 
+}

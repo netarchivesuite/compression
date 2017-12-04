@@ -15,6 +15,14 @@
         <tag>HEAD</tag>
     </scm>
 
+    <properties>
+      <maven.compiler.source>1.8</maven.compiler.source>
+      <maven.compiler.target>1.8</maven.compiler.target>
+      <maven.build.timestamp.format>ddMMyyyy-HHmm</maven.build.timestamp.format>
+      <nas.version>5.4-SNAPSHOT</nas.version>
+      <jwat-tools.version>0.6.6-SNAPSHOT</jwat-tools.version>
+    </properties>
+
     <distributionManagement>
         <repository>
             <id>sbforge-nexus</id>
@@ -58,7 +66,7 @@
         <dependency>
             <groupId>org.jwat</groupId>
             <artifactId>jwat-tools</artifactId>
-            <version>0.6.6-SNAPSHOT</version>
+            <version>${jwat-tools.version}</version>
         </dependency>
         <dependency>
             <groupId>org.netpreserve.openwayback</groupId>
@@ -68,12 +76,12 @@
         <dependency>
             <groupId>org.netarchivesuite</groupId>
             <artifactId>harvester-core</artifactId>
-            <version>5.3.1</version>
+            <version>${nas.version}</version>
         </dependency>
         <dependency>
             <groupId>org.netarchivesuite</groupId>
             <artifactId>wayback-indexer</artifactId>
-            <version>5.3.1</version>
+            <version>${nas.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.commons</groupId>
@@ -83,7 +91,7 @@
         <dependency>
             <groupId>org.netarchivesuite</groupId>
             <artifactId>archive-core</artifactId>
-            <version>5.3.1</version>
+            <version>${nas.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -134,11 +142,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <properties>
-      <maven.compiler.source>1.8</maven.compiler.source>
-      <maven.compiler.target>1.8</maven.compiler.target>
-      <maven.build.timestamp.format>ddMMyyyy-HHmm</maven.build.timestamp.format>
-    </properties>
-
 </project>
