@@ -38,6 +38,8 @@ import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXResult;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
@@ -48,6 +50,9 @@ import dk.nationalbiblioteket.netarkivet.compression.precompression.CDXRecordExt
  * Created by csr on 12/8/16.
  */
 public class PrecompressionRunnable extends CompressFile implements Runnable {
+
+    Logger logger = LoggerFactory.getLogger(PrecompressionRunnable.class);
+
 
     private static boolean isDead = false;
     private static Throwable error = null;
@@ -213,6 +218,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         CDXEntry oEntry;
         CDXEntry nEntry;
         String waybackCdxSpec = " CDX N b a m s k r V g";
+        int linecount = 0;
         try (
                 PrintWriter ifileWriter = new PrintWriter(new BufferedWriter(new FileWriter(iFile, true)));
                 PrintWriter cdxWriter = new PrintWriter(new BufferedWriter(new FileWriter(cdxFile, true)))

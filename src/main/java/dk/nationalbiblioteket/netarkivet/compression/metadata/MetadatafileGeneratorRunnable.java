@@ -491,6 +491,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             String filename = split[8];
                             String offset = split[7];
                             IFileEntry iFileEntry = iFileCache.getIFileEntry(filename, Long.parseLong(offset));
+                            if (filename == null || offset == null || filename.isEmpty() || offset.isEmpty() || iFileEntry.getNewOffset() == null || iFileEntry.getTimestamp() == null) {
+                                logger.warn("Error migrating output to {} {} {} {}.", filename, offset, iFileEntry.getNewOffset(), iFileEntry.getTimestamp());
+                                throw new Exception("Error migrating output");
+                            }
                             migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append(' ').append(iFileEntry.getTimestamp());
                             split[8] = filename + ".gz";
                             split[7] = "" + iFileEntry.getNewOffset();
