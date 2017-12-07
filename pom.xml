@@ -19,8 +19,9 @@
       <maven.compiler.source>1.8</maven.compiler.source>
       <maven.compiler.target>1.8</maven.compiler.target>
       <maven.build.timestamp.format>ddMMyyyy-HHmm</maven.build.timestamp.format>
-      <nas.version>5.4-SNAPSHOT</nas.version>
+      <nas.version>5.3.1</nas.version>
       <jwat-tools.version>0.6.6-SNAPSHOT</jwat-tools.version>
+      <webarchive-commons.version>1.1.9-SNAPSHOT</webarchive-commons.version>
     </properties>
 
     <distributionManagement>
@@ -72,6 +73,44 @@
             <groupId>org.netpreserve.openwayback</groupId>
             <artifactId>openwayback-core</artifactId>
             <version>2.3.0</version>
+            <exclusions>
+            <exclusion>
+              <groupId>org.codehaus.jettison</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.springframework</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.apache.hadoop</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.archive.wayback</groupId>
+              <artifactId>wayback-cdx-server</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.archive.access-control</groupId>
+              <artifactId>access-control</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>redis.clients</groupId>
+              <artifactId>jedis</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.sleepycat</groupId>
+              <artifactId>je</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>fastutil</groupId>
+              <artifactId>fastutil</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>it.unimi.dsi</groupId>
+              <artifactId>dsiutils</artifactId>
+            </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.netarchivesuite</groupId>
@@ -103,6 +142,11 @@
           <artifactId>logback-classic</artifactId>
           <version>1.2.3</version>
         </dependency>
+        <dependency>
+          <groupId>org.netpreserve.commons</groupId>
+          <artifactId>webarchive-commons</artifactId>
+          <version>${webarchive-commons.version}</version>
+        </dependency>
        </dependencies>
 
     <build>
@@ -112,7 +156,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <phase>compile</phase>
+                        <phase>package</phase>
                         <goals>
                             <goal>copy-dependencies</goal>
                         </goals>
