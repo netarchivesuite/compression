@@ -269,6 +269,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             } catch (WeirdFileException we) {
                 try {
                     writeCompressionLog(filename + " could not be processed.", threadNo);
+                    logger.warn(filename + " could not be processed.", we);
                 } catch (DeeplyTroublingException e) {
                     // isDead = true;
                     error = e;
