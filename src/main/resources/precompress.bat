@@ -7,7 +7,7 @@ Set JARDIR=%~dp0\..\lib
 Set CONFDIR=%~dp0\..\config
 
 for %%f in (split_output_*)  do (
-   java -classpath "%JARDIR%/*" -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %%f %3
+   java -classpath "%JARDIR%/*" -Dlogback.configurationFile="%CONFDIR%/precompress.logback.xml"  -Dconfig="%CONFDIR%/precompress.conf" %PACKAGE%.%CLASS% %%f %3
    del %%f
    ECHO "Finished processing corpus file %%f"
 )
