@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+      <resetJUL>true</resetJUL>
+    </contextListener>
+
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!--
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>WARN</level>
             <onMatch>ACCEPT</onMatch>
             <onMismatch>NEUTRAL</onMismatch>
         </filter>
+        -->
         <encoder>
             <pattern>%-5level %d{HH:mm:ss.SSS} [%thread] %logger{36}.%M\(line %line\) - %msg%n</pattern>
         </encoder>

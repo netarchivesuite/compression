@@ -143,6 +143,11 @@
           <version>1.2.3</version>
         </dependency>
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+            <version>1.7.10</version>
+        </dependency>
+        <dependency>
           <groupId>org.netpreserve.commons</groupId>
           <artifactId>webarchive-commons</artifactId>
           <version>${webarchive-commons.version}</version>
