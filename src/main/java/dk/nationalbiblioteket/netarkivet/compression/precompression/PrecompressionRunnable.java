@@ -440,7 +440,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     	    ResourceFactoryMapper mapper = new ExtractingResourceFactoryMapper();
     	    ExtractingResourceProducer exProducer = new ExtractingResourceProducer(producer, mapper);
     	    CDXRecordExtractorOutput out = new CDXRecordExtractorOutput(cdxRecords);
-    	    System.out.println("Hello");
+    	    //System.out.println("Hello");
         	while (true) {
             	try {
             	    Resource r = exProducer.getNext();
