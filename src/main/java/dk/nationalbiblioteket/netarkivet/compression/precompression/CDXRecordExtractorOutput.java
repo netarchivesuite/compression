@@ -250,7 +250,10 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 				cdxRecord.offset = offset; 
 				cdxRecord.filename = filename; 
 				cdxRecord.m = m;
-				cdxRecords.add(cdxRecord);
+				if (!cdxRecord.origUrl.startsWith("warcinfo") && !cdxRecord.mime.equals("warc/request") && !cdxRecord.mime.equals("warc/metadata")
+						&& !cdxRecord.mime.equals("warc/revisit")) {
+					cdxRecords.add(cdxRecord);
+				}
 			}
 //			out.println(filename + " "+resource.getMetaData().getTopMetaData().toString(1));
 		} catch (JSONException e) {
