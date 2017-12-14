@@ -516,13 +516,15 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
 		    if (wacCdxRecord.origUrl.compareToIgnoreCase(jwatCdxEntry.url) != 0) {
         		throw new WeirdFileException("Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
     		}
-		    if (wacCdxRecord.mime.compareToIgnoreCase(jwatCdxEntry.mimetype) != 0) {
-        		throw new WeirdFileException("Mimwtypes differ: " + wacCdxRecord.mime + " - " + jwatCdxEntry.mimetype);
-    		}
-		    if (wacCdxRecord.date.compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
-        		throw new WeirdFileException("Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
-    		}
-    		++idx;
+            /**
+             if (wacCdxRecord.mime.compareToIgnoreCase(jwatCdxEntry.mimetype) != 0) {
+             throw new WeirdFileException("Mimwtypes differ: " + wacCdxRecord.mime + " - " + jwatCdxEntry.mimetype);
+             }
+             */
+            if (wacCdxRecord.date.compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
+                throw new WeirdFileException("Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
+            }
+            ++idx;
     	}
     	if (idx < wacCdxRecords.size()) {
     		throw new WeirdFileException("Number of records not identical: nascdx=" + wacCdxRecords.size() + " offset=" + wacCdxRecords.get(idx).offset + " > jwatcdx=" + jwatCdxEntries.size());
