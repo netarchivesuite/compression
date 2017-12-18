@@ -232,25 +232,27 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 			canUrl = keyMaker.makeKey(origUrl);
 			// URL DATE OURL MIME HTTP-CODE SHA1 META REDIR OFFSET LENGTH FILE
 			if (!origUrl.startsWith("filedesc:")) {
-				if (origUrl.startsWith("dns:") && !mime.equalsIgnoreCase("text/dns")) {
-					mime = "text/dns";
-				} else if ("unk".equals(mime)) {
-					mime = "no-type";					
+				if (format.equals("ARC") || (format.startsWith("WARC") && "response".equalsIgnoreCase(getWARCType(m)))) {
+					if (origUrl.startsWith("dns:") && !mime.equalsIgnoreCase("text/dns")) {
+						mime = "text/dns";
+					} else if ("unk".equals(mime)) {
+						mime = "no-type";					
+					}
+					CDXRecord cdxRecord = new CDXRecord();
+					cdxRecord.canUrl = canUrl; 
+					cdxRecord.date = date;
+					cdxRecord.origUrl = origUrl;
+					cdxRecord.mime = mime;
+					cdxRecord.httpCode = httpCode;
+					cdxRecord.digest = digest;
+					cdxRecord.redir = redir;
+					cdxRecord.meta = meta;
+					cdxRecord.gzLen = gzLen; 
+					cdxRecord.offset = offset; 
+					cdxRecord.filename = filename; 
+					cdxRecord.m = m;
+					cdxRecords.add(cdxRecord);
 				}
-				CDXRecord cdxRecord = new CDXRecord();
-				cdxRecord.canUrl = canUrl; 
-				cdxRecord.date = date;
-				cdxRecord.origUrl = origUrl;
-				cdxRecord.mime = mime;
-				cdxRecord.httpCode = httpCode;
-				cdxRecord.digest = digest;
-				cdxRecord.redir = redir;
-				cdxRecord.meta = meta;
-				cdxRecord.gzLen = gzLen; 
-				cdxRecord.offset = offset; 
-				cdxRecord.filename = filename; 
-				cdxRecord.m = m;
-				cdxRecords.add(cdxRecord);
 			}
 //			out.println(filename + " "+resource.getMetaData().getTopMetaData().toString(1));
 		} catch (JSONException e) {
