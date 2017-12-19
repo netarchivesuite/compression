@@ -7,6 +7,7 @@ import dk.nationalbiblioteket.netarkivet.compression.metadata.MetadatafileGenera
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
@@ -52,7 +53,8 @@ public class PrecompressionRunnableTest {
     @DataProvider(name = "fileNameProvider")
     public static Iterator<Object[]> getFiles() {
         File[] files = new File("src/test/data/WORKING/precompress").listFiles((dir, name) -> {
-            return name.endsWith("arc");
+            //return name.endsWith("arc");
+            return name.startsWith("3-3");
         }) ;
 
 /*         File[] files = new File[]{
@@ -70,6 +72,10 @@ public class PrecompressionRunnableTest {
             list.add(new File[]{file});
         }
         return list.iterator();
+    }
+
+    static {
+        SLF4JBridgeHandler.install();
     }
 
     @Test(dataProvider = "fileNameProvider")

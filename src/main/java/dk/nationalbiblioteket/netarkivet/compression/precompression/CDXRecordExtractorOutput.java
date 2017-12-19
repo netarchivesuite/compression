@@ -250,7 +250,7 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 					cdxRecord.gzLen = gzLen; 
 					cdxRecord.offset = offset; 
 					cdxRecord.filename = filename; 
-					cdxRecord.m = m;
+					//cdxRecord.m = m;
 					cdxRecords.add(cdxRecord);
 				}
 			}
