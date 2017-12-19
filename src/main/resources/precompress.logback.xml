@@ -38,7 +38,6 @@
         </encoder>
     </appender>
 
-
     <root level="WARN">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
@@ -46,5 +45,5 @@
 
     <logger name="dk.nationalbiblioteket.netarkivet.compression" level="TRACE" />
     <logger name="org.archive.extract" level="WARN" />
-
+    <logger name="org.archive.format.http.HttpHeaders" level="FATAL" />
 </configuration>
