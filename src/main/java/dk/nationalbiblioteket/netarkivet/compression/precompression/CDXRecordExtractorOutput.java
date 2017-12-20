@@ -70,7 +70,7 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 		public String offset;
 		public String filename;
 		public String format;
-		public MetaData m;
+		//public MetaData m;
 	}
 
 	public CDXRecordExtractorOutput(List<CDXRecord> cdxRecords) {

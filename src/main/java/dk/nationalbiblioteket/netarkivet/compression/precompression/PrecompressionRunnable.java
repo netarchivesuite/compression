@@ -465,11 +465,11 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
 		    if (wacCdxRecord.origUrl.compareToIgnoreCase(jwatCdxEntry.url) != 0) {
         		throw new WeirdFileException("Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
     		}
-            /**
-             if (wacCdxRecord.mime.compareToIgnoreCase(jwatCdxEntry.mimetype) != 0) {
-             throw new WeirdFileException("Mimwtypes differ: " + wacCdxRecord.mime + " - " + jwatCdxEntry.mimetype);
-             }
-             */
+            if (wacCdxRecord.mime.compareToIgnoreCase(jwatCdxEntry.mimetype) != 0) {
+            	if (!"no-type".equalsIgnoreCase(wacCdxRecord.mime) || !"application/http".equalsIgnoreCase(jwatCdxEntry.mimetype)) {
+                	throw new WeirdFileException("Mimwtypes differ: " + wacCdxRecord.mime + " - " + jwatCdxEntry.mimetype);
+            	}
+            }
             if (wacCdxRecord.date.compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
                 throw new WeirdFileException("Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
             }
