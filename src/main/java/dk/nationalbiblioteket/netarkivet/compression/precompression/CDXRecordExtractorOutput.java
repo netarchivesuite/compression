@@ -1,21 +1,30 @@
 package dk.nationalbiblioteket.netarkivet.compression.precompression;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.archive.RecoverableRecordFormatException;
+import org.archive.extract.ExtractingResourceFactoryMapper;
+import org.archive.extract.ExtractingResourceProducer;
 import org.archive.extract.ExtractorOutput;
+import org.archive.extract.ProducerUtils;
+import org.archive.extract.ResourceFactoryMapper;
 import org.archive.format.gzip.GZIPFormatException;
 import org.archive.format.json.JSONUtils;
 import org.archive.format.json.SimpleJSONPathSpec;
 import org.archive.resource.MetaData;
 import org.archive.resource.Resource;
+import org.archive.resource.ResourceParseException;
+import org.archive.resource.ResourceProducer;
 import org.archive.url.URLKeyMaker;
 import org.archive.url.WaybackURLKeyMaker;
 import org.archive.util.IAUtils;
@@ -26,6 +35,8 @@ import org.json.JSONObject;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CountingOutputStream;
+
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 
 public class CDXRecordExtractorOutput implements ExtractorOutput  {
 
@@ -56,22 +67,6 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 	private List<CDXRecord> cdxRecords;
 
 	private URLKeyMaker keyMaker;
-
-	public static class CDXRecord {
-		public String canUrl;
-		public String date;
-		public String origUrl;
-		public String mime;
-		public String httpCode;
-		public String digest;
-		public String redir;
-		public String meta;
-		public String gzLen;
-		public String offset;
-		public String filename;
-		public String format;
-		//public MetaData m;
-	}
 
 	public CDXRecordExtractorOutput(List<CDXRecord> cdxRecords) {
 		this(cdxRecords, new WaybackURLKeyMaker(false));
@@ -506,5 +501,57 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
 		}
 		return "-";
 	}
+
+	public static class CDXRecord {
+		public String canUrl;
+		public String date;
+		public String origUrl;
+		public String mime;
+		public String httpCode;
+		public String digest;
+		public String redir;
+		public String meta;
+		public String gzLen;
+		public String offset;
+		public String filename;
+		public String format;
+		//public MetaData m;
+	}
+
+    public static List<CDXRecord> getCDXRecords(File inputFile) throws WeirdFileException {
+    	List<CDXRecord> cdxRecords = new ArrayList<CDXRecord>();
+    	try {
+    	    ResourceProducer producer = ProducerUtils.getProducer(inputFile.getPath());
+    	    if (producer == null) {
+        		throw new WeirdFileException("Problem indexing file with webarchive commons. (" + inputFile.getPath() + ")");
+    	    }
+    	    ResourceFactoryMapper mapper = new ExtractingResourceFactoryMapper();
+    	    ExtractingResourceProducer exProducer = new ExtractingResourceProducer(producer, mapper);
+    	    CDXRecordExtractorOutput out = new CDXRecordExtractorOutput(cdxRecords);
+        	while (true) {
+            	try {
+            	    Resource r = exProducer.getNext();
+            	    if (r == null) {
+            	    	break;
+            	    }
+            	    out.output(r);
+            	} catch(GZIPFormatException e) {
+        			throw new WeirdFileException("GZIPFormatException while parsing file.  (" + inputFile.getPath() + ")", e);
+        		} catch(ResourceParseException e) {
+        			cdxRecords.add(null);
+        			// Ignore because webarchive-commons is just weird...
+        			//throw new WeirdFileException("GZIPFormatException while parsing file.  (" + inputFile.getPath() + ")", e);
+        		} catch(RecoverableRecordFormatException e) {
+        			cdxRecords.add(null);
+        			System.err.format("%s: %s",exProducer.getContext(),e.getMessage());
+        			e.printStackTrace();
+        		}
+        	}
+    	} catch (Throwable t) {
+    		cdxRecords = null;
+    		throw new WeirdFileException("Problem indexing file with webarchive commons. (" + inputFile.getPath() + ")", t);
+    	}
+    	return cdxRecords;
+    }
 
 }
