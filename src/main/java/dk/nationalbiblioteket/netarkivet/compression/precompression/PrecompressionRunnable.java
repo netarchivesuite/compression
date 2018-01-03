@@ -190,7 +190,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         if (wacCdxRecords == null) {
         	throw new WeirdFileException("CDX validation of " + uncompressedFile.getAbsolutePath() + " failed!");
         }
-        compareCdxRecords(wacCdxRecords, uncompressedResult.getEntries(), false);
+        compareCdxRecords(wacCdxRecords, uncompressedResult.getEntries(), false, uncompressedFile.length());
         wacCdxRecords.clear();
         // Compressed CDXRecords.
         CDXFile compressedCDXFile = new CDXFile();
@@ -202,7 +202,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         if (wacCdxRecords == null) {
         	throw new WeirdFileException("CDX validation of " + compressedFile.getAbsolutePath() + " failed!");
         }
-        compareCdxRecords(wacCdxRecords, compressedResult.getEntries(), true);
+        compareCdxRecords(wacCdxRecords, compressedResult.getEntries(), true, compressedFile.length());
         wacCdxRecords.clear();
         // Generate ifile and cdx file.
         List<CDXEntry> ocdx = uncompressedResult.getEntries();
@@ -387,7 +387,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     public static final int S_BALANCE = 0;
     public static final int S_DISTURBANCE = 1;
 
-    public boolean compareCdxRecords(List<CDXRecord> wacCdxRecords, List<CDXEntry> jwatCdxEntries, boolean bCompressed) throws WeirdFileException {
+    public boolean compareCdxRecords(List<CDXRecord> wacCdxRecords, List<CDXEntry> jwatCdxEntries, boolean bCompressed, long filelength) throws WeirdFileException {
     	CDXRecord wacCdxRecord;
     	CDXEntry jwatCdxEntry;
     	int wIdx = 0;
@@ -428,25 +428,25 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     				if (!"-".equals(wacCdxRecord.offset)) {
     					// Offsets differ.
     		    		if (Long.parseLong(wacCdxRecord.offset) != jwatCdxEntry.offset) {
-    		    			logger.warn("(" + wIdx + ":" + jIdx + ")Offsets differ: " + wacCdxRecord.offset + " - " + jwatCdxEntry.offset);
+    		    			logger.warn("(" + wIdx + ":" + jIdx + ") Offsets differ: " + wacCdxRecord.offset + " - " + jwatCdxEntry.offset);
     		    			/*
     		    			 * Check if the rest of the data matches.
     		    			 */
     	    			    if (wacCdxRecord.origUrl.compareToIgnoreCase(jwatCdxEntry.url) != 0) {
     	    			    	bEqual = false;
-    	    	        		logger.warn("(\" + wIdx + \":\" + jIdx + \")Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
+    	    	        		logger.warn("(" + wIdx + ":" + jIdx + ") Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
     	    	    		}
 	    	            	wacMimetype = cleanupMimetype(wacCdxRecord.mime);
 	    	            	jwatMimetype = cleanupMimetype(jwatCdxEntry.mimetype);
     	    	            if (wacMimetype.compareToIgnoreCase(jwatMimetype) != 0) {
     	    	            	if (!"no-type".equalsIgnoreCase(wacMimetype) || !"application/http".equalsIgnoreCase(jwatMimetype)) {
         	    			    	bEqual = false;
-    	    	            		logger.warn("(\" + wIdx + \":\" + jIdx + \")Mimetypes differ: " + wacMimetype + " - " + jwatMimetype);
+    	    	            		logger.warn("(" + wIdx + ":" + jIdx + ") Mimetypes differ: " + wacMimetype + " - " + jwatMimetype);
     	    	            	}
     	    	            }
     	    	            if (wacCdxRecord.date.compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
     	    			    	bEqual = false;
-    	    	            	logger.warn("(\" + wIdx + \":\" + jIdx + \")Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
+    	    	            	logger.warn("(" + wIdx + ":" + jIdx + ") Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
     	    	            }
     	    	            ++disturbances;
     	    	            ++disturbancesInARow;
@@ -463,19 +463,19 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     				    } else {
     	    			    if (wacCdxRecord.origUrl.compareToIgnoreCase(jwatCdxEntry.url) != 0) {
     	    			    	bEqual = false;
-    	    	        		logger.warn("(\" + wIdx + \":\" + jIdx + \")Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
+    	    	        		logger.warn("(" + wIdx + ":" + jIdx + ") Urls differ: " + wacCdxRecord.origUrl + " - " + jwatCdxEntry.url);
     	    	    		}
 	    	            	wacMimetype = cleanupMimetype(wacCdxRecord.mime);
 	    	            	jwatMimetype = cleanupMimetype(jwatCdxEntry.mimetype);
     	    	            if (wacMimetype.compareToIgnoreCase(jwatMimetype) != 0) {
     	    	            	if (!"no-type".equalsIgnoreCase(wacMimetype) || !"application/http".equalsIgnoreCase(jwatMimetype)) {
         	    			    	bEqual = false;
-    	    	            		logger.warn("(\" + wIdx + \":\" + jIdx + \")Mimetypes differ: " + wacMimetype + " - " + jwatMimetype);
+    	    	            		logger.warn("(" + wIdx + ":" + jIdx + ") Mimetypes differ: " + wacMimetype + " - " + jwatMimetype);
     	    	            	}
     	    	            }
     	    	            if (wacCdxRecord.date.compareToIgnoreCase(ArcDateParser.getDateFormat().format(jwatCdxEntry.date)) != 0) {
     	    			    	bEqual = false;
-    	    	            	logger.warn("(\" + wIdx + \":\" + jIdx + \")Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
+    	    	            	logger.warn("(" + wIdx + ":" + jIdx + ") Dates differ: " + wacCdxRecord.date + " - " + jwatCdxEntry.date);
     	    	            }
     	    	            if (bEqual) {
         	    	            disturbancesInARow = 0;
@@ -519,15 +519,18 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     		*/
     	}
     	if (disturbances > 0) {
-    		logger.warn(disturbances + " registered while parsing file.");
+    		logger.warn(disturbances + " disturbances registered while parsing file.");
     	}
         if (disturbances > 10) {
         	throw new WeirdFileException("5 disturbances registered!");
         }
     	if (wacCdxRecords.size() > jwatCdxEntries.size()) {
-    		throw new WeirdFileException("WAC parsed more record than JWAT. (" + wacCdxRecords.size() + " > " + jwatCdxEntries.size() + ")");
+    		wacCdxRecord = wacCdxRecords.get(wacCdxRecords.size() - 1);
+    		if ((wacCdxRecords.size() - 1 != jwatCdxEntries.size()) || (wacCdxRecord != null && !"-".equalsIgnoreCase(wacCdxRecord.offset) && filelength - Long.parseLong(wacCdxRecord.offset) > 100)) {
+        		throw new WeirdFileException("WAC parsed more record than JWAT. (" + wacCdxRecords.size() + " > " + jwatCdxEntries.size() + ")");
+    		}
     	}
-    	if (wIdx < wacCdxRecords.size()) {
+    	if (wacCdxRecords.size() - wIdx > 1) {
     		throw new WeirdFileException("WAC parsed records after JWAT stopped. (" + wIdx + "/" + wacCdxRecords.size() + " > " + jIdx + "/" + jwatCdxEntries.size() + ")");
     	}
     	if (jwatCdxEntries.size() > wacCdxRecords.size()) {
