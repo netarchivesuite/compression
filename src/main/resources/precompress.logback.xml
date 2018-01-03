@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+      <resetJUL>true</resetJUL>
+    </contextListener>
+
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!--
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>NEUTRAL</onMismatch>
+        </filter>
+        -->
+        <encoder>
+            <pattern>%-5level %d{HH:mm:ss.SSS} [%thread] %logger{36}.%M\(line %line\) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>./log/precompress.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>./log/precompress.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <!-- or whenever the file size reaches 10MB -->
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!-- keep 30 days' worth of history -->
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%-5level %d{HH:mm:ss.SSS} [%thread] %logger{36}.%M\(line %line\) - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <logger name="dk.nationalbiblioteket.netarkivet.compression" level="TRACE" />
+    <logger name="org.archive.extract" level="WARN" />
+    <logger name="org.archive.format.http.HttpHeaders" level="FATAL" />
+</configuration>

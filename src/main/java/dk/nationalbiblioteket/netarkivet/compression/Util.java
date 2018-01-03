@@ -1,5 +1,7 @@
 package dk.nationalbiblioteket.netarkivet.compression;
 
+import org.slf4j.bridge.SLF4JBridgeHandler;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,6 +21,10 @@ import java.util.stream.Collectors;
  * Created by csr on 12/22/16.
  */
 public class Util {
+
+    static {
+        SLF4JBridgeHandler.install();
+    }
 
     public static final String CONFIG = "config";
     public static final String IFILE_ROOT_DIR = "IFILE_ROOT_DIR";

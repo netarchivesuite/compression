@@ -1,6 +1,7 @@
 package dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.trilong;
 
 import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.CacheMissException;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.objectbased.IFileEntry;
 import org.apache.commons.collections4.map.AbstractReferenceMap;
@@ -45,9 +46,13 @@ public class IFileCacheSoftLongArrays implements IFileCache {
 
 
     @Override
-    public synchronized IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException {
+    public synchronized IFileEntry getIFileEntry(String oldFilename, Long oldOffset) throws FileNotFoundException, CacheMissException {
         IFileEntryMap ifileMap = loadFile(oldFilename);
-        return ifileMap.get(oldOffset);
+        final IFileEntry iFileEntry = ifileMap.get(oldOffset);
+        if (iFileEntry == null) {
+            throw new CacheMissException();
+        }
+        return iFileEntry;
     }
 
     private IFileEntryMap loadFile(String oldFilename) throws FileNotFoundException {

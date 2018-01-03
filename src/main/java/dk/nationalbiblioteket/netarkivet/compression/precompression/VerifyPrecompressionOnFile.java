@@ -12,6 +12,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
@@ -22,7 +23,8 @@ import dk.netarkivet.common.utils.cdx.CDXUtils;
 public class VerifyPrecompressionOnFile {
     static final String SEPARATOR_REGEX = "\\s+";
     public static void main(String[] args) throws DeeplyTroublingException, WeirdFileException, IOException {
-        if (args.length != 1) {
+    	SLF4JBridgeHandler.install();
+    	if (args.length != 1) {
             System.err.println("Missing arg: uncompressed (w)arc file");
             System.exit(1);
         }

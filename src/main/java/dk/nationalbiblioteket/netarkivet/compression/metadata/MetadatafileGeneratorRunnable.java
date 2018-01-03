@@ -4,6 +4,7 @@ import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
 import dk.nationalbiblioteket.netarkivet.compression.Util;
 import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.AlreadyKnownMissingFileException;
+import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.CacheMissException;
 import dk.nationalbiblioteket.netarkivet.compression.tools.ValidateMetadataOutput;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCache;
 import dk.nationalbiblioteket.netarkivet.compression.metadata.ifilecache.IFileCacheFactory;
@@ -118,9 +119,20 @@ public class MetadatafileGeneratorRunnable implements Runnable {
             outputDir = outputDirFile.getAbsolutePath();
         }
         final Path outputDirPath = Paths.get(outputDir);
-        Files.createDirectories(outputDirPath);
+        if (!outputDirPath.toFile().exists()) {
+            try {
+                Files.createDirectories(outputDirPath);
+            } catch (IOException e) {
+                //Can occur as race condition if two thread try to create same directory. Not a problem.
+            }
+        }
+        if (!outputDirPath.toFile().exists()) {
+            throw new DeeplyTroublingException("Could not create directory " + outputDirPath);
+        }
+        if (outputDirPath.toFile().exists() && !outputDirPath.toFile().isDirectory()) {
+            throw new DeeplyTroublingException(outputDirPath + " exists and is not a directory");
+        }
         File cdxDir = Util.getCDXSubdir(inputFile.getName(), true);
-
         final String newMetadataFilename = Util.getNewMetadataFilename(filename);
         if (newMetadataFilename == null) {
             throw new WeirdFileException("Cannot work out how to generate new metadata file name from " + filename);
@@ -414,6 +426,8 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                         captureSearchResult.setOffset(iFileEntry.getNewOffset());
                         captureSearchResult.setFile(file + ".gz");
                         line = cdxFormat.serializeResult(captureSearchResult);
+                    } catch (CacheMissException e) {
+                        logger.warn("Could not find lookup for old cdx line '{}' in file {} in cache so just writing it back to output", line, inputPath, e);
                     } catch (Exception e) {
                         // If there is no lookup for this record, it may be because it refers to a record
                         // from a file which cannot be compressed. But the file may stil have valid archive data
@@ -431,15 +445,6 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                 } catch (Exception e) {
                     logger.warn("Error processing line '{}' in {}.", line, inputPath, e);
                 }
-
- /*               catch (Exception e) {
-                    if (e.getCause() instanceof AlreadyKnownMissingFileException) {
-                        //Do nothing
-                    } else if (e.getCause() instanceof FileNotFoundException) {
-                        logger.warn("Missing ifile. {}.", e.getMessage());
-                    } else
-                        logger.warn("Error processing '" + line + "'", e);
-                }*/
             }
             return sb.toString().getBytes();
         } catch (IOException e) {
@@ -486,6 +491,10 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             String filename = split[8];
                             String offset = split[7];
                             IFileEntry iFileEntry = iFileCache.getIFileEntry(filename, Long.parseLong(offset));
+                            if (filename == null || offset == null || filename.isEmpty() || offset.isEmpty() || iFileEntry.getNewOffset() == null || iFileEntry.getTimestamp() == null) {
+                                logger.warn("Error migrating output to {} {} {} {}.", filename, offset, iFileEntry.getNewOffset(), iFileEntry.getTimestamp());
+                                throw new Exception("Error migrating output");
+                            }
                             migrationOutput.append(filename).append(' ').append(offset).append(' ').append(iFileEntry.getNewOffset()).append(' ').append(iFileEntry.getTimestamp());
                             split[8] = filename + ".gz";
                             split[7] = "" + iFileEntry.getNewOffset();
@@ -495,11 +504,14 @@ public class MetadatafileGeneratorRunnable implements Runnable {
                             dedupEntriesFailed++;
                         }
                     } catch (AlreadyKnownMissingFileException e) {
-                            logger.warn("Thread #{}: AlreadyKnownMissingFileException in duplicate line '{}' in file {}.", threadNo, line, originalFilePath, e);
-                            dedupEntriesFailed++;
+                        logger.warn("Thread #{}: AlreadyKnownMissingFileException in duplicate line '{}' in file {}.", threadNo, line, originalFilePath, e);
+                        dedupEntriesFailed++;
+                    } catch (CacheMissException e) {
+                        logger.warn("Thread #{}: Could not resolve duplicate line '{}' in  {}.", threadNo, line, originalFilePath, e);
+                        dedupEntriesFailed++;
                     } catch (Exception e) {
-                            logger.warn("Thread #{}: Error parsing duplicate line '{}' in  {}.", threadNo, line, originalFilePath, e);
-                            dedupEntriesFailed++;
+                        logger.warn("Thread #{}: Error parsing duplicate line '{}' in  {}.", threadNo, line, originalFilePath, e);
+                        dedupEntriesFailed++;
                     }
                 }
             }
