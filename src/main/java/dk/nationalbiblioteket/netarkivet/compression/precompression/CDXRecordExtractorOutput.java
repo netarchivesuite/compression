@@ -32,6 +32,9 @@ import org.archive.util.StreamCopy;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.jwat.arc.ArcDateParser;
+import org.jwat.common.Uri;
+import org.jwat.common.UriProfile;
 
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CountingOutputStream;
@@ -552,6 +555,115 @@ public class CDXRecordExtractorOutput implements ExtractorOutput  {
     		throw new WeirdFileException("Problem indexing file with webarchive commons. (" + inputFile.getPath() + ")", t);
     	}
     	return cdxRecords;
+    }
+
+    public static String toCdxLine(CDXRecord record, String filename, char[] format) {
+        StringBuilder sb = new StringBuilder();
+        sb.setLength(0);
+        char c;
+        Uri uri;
+        String host;
+        int port;
+        String query;
+        for (int i = 0; i < format.length; ++i) {
+            if (sb.length() > 0) {
+                sb.append(' ');
+            }
+            c = format[i];
+            switch (c) {
+                case 'b':
+                    if (record.date != null) {
+                        sb.append(ArcDateParser.getDateFormat().format(record.date));
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'e':
+                	/*
+                    if (record.ip != null && record.ip.length() > 0) {
+                        sb.append(record.ip);
+                    } else {
+                        sb.append('-');
+                    }
+                    */
+                    sb.append('-');
+                    break;
+                case 'A':
+                case 'N':
+                    if (record.canUrl != null && record.canUrl.length() > 0) {
+                        uri = Uri.create(record.canUrl, UriProfile.RFC3986_ABS_16BIT_LAX);
+                        StringBuilder cUrl = new StringBuilder();
+                        if ("http".equalsIgnoreCase(uri.getScheme())) {
+                            host = uri.getHost();
+                            port = uri.getPort();
+                            query = uri.getRawQuery();
+                            if (host.startsWith("www.")) {
+                                host = host.substring("www.".length());
+                            }
+                            cUrl.append(host);
+                            if (port != -1 && port != 80) {
+                                cUrl.append(':');
+                                cUrl.append(port);
+                            }
+                            cUrl.append(uri.getRawPath());
+                            if (query != null) {
+                                cUrl.append('?');
+                                cUrl.append(query);
+                            }
+                            sb.append(cUrl.toString().toLowerCase());
+                        } else {
+                            sb.append(record.canUrl.toLowerCase());
+                        }
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'a':
+                    if (record.origUrl != null && record.origUrl.length() > 0) {
+                        sb.append(record.origUrl);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'm':
+                    if (record.mime != null && record.mime.length() > 0) {
+                        sb.append(record.mime);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 's':
+                    if (record.httpCode != null && record.httpCode.length() > 0) {
+                        sb.append(record.httpCode);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'c':
+                    if (record.digest != null && record.digest.length() > 0) {
+                        sb.append(record.digest);
+                    } else {
+                        sb.append('-');
+                    }
+                    break;
+                case 'v':
+                case 'V':
+                    sb.append(record.offset);
+                    break;
+                case 'n':
+                    //sb.append(record.length);
+                    sb.append("-");
+                    break;
+                case 'g':
+                    sb.append(filename);
+                    break;
+                case '-':
+                default:
+                    sb.append('-');
+                    break;
+            }
+        }
+        return sb.toString();
     }
 
 }

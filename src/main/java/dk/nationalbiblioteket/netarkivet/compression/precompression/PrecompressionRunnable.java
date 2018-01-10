@@ -3,17 +3,22 @@ package dk.nationalbiblioteket.netarkivet.compression.precompression;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.compress.utils.IOUtils;
 import org.archive.wayback.UrlCanonicalizer;
 import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
@@ -21,6 +26,7 @@ import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.jwat.arc.ArcDateParser;
 import org.jwat.common.Uri;
 import org.jwat.common.UriProfile;
+import org.jwat.tools.tasks.ResultItemThrowable;
 import org.jwat.tools.tasks.cdx.CDXEntry;
 import org.jwat.tools.tasks.cdx.CDXFile;
 import org.jwat.tools.tasks.cdx.CDXFormatter;
@@ -28,6 +34,7 @@ import org.jwat.tools.tasks.cdx.CDXOptions;
 import org.jwat.tools.tasks.cdx.CDXResult;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
+import org.jwat.tools.tasks.compress.CompressResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,10 +108,10 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         compressOptions.dstPath = tmpdir;
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
-        this.compressFile(inputFile, compressOptions);
+        CompressResult result = this.compressFile(inputFile, compressOptions);
         File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
-            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.");
+            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.", result.getThrowable());
         } else {
             return gzipFile;
         }
@@ -184,6 +191,13 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     	CDXFile uncompressedCDXFile = new CDXFile();
         CDXResult uncompressedResult = uncompressedCDXFile.processFile(uncompressedFile, cdxOptions);
         if (uncompressedResult.hasFailed()) {
+        	List<ResultItemThrowable> throwables = uncompressedResult.getThrowables();
+        	if (throwables != null) {
+        		Iterator<ResultItemThrowable> iter = throwables.iterator();
+        		while (iter.hasNext()) {
+        			iter.next().t.printStackTrace(System.err);
+        		}
+        	}
         	throw new WeirdFileException("CDX generation of " + uncompressedFile.getAbsolutePath() + " failed!");
         }
         wacCdxRecords = CDXRecordExtractorOutput.getCDXRecords(uncompressedFile);
@@ -219,8 +233,12 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
             while (idx < ocdx.size() && idx < ncdx.size()) {
                 oEntry = ocdx.get(idx);
                 nEntry = ncdx.get(idx);
-                ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + oEntry.date.getTime());
-                cdxWriter.println(formatter.cdxEntry(nEntry,compressedFile.getName(),"NbamskrVg".toCharArray()));
+                if (oEntry.date != null) {
+                    ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + oEntry.date.getTime());
+                } else {
+                    ifileWriter.println(oEntry.offset + " " + nEntry.offset + " " + -1);
+                }
+                cdxWriter.println(formatter.cdxEntry(nEntry, compressedFile.getName(), "NbamskrVg".toCharArray()));
                 ++idx;
             }
             if (idx < ocdx.size()) {
@@ -398,6 +416,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     	String jwatMimetype;
     	int disturbances = 0;
     	int disturbancesInARow = 0;
+    	int nulls = 0;
     	while (wIdx < wacCdxRecords.size() && jIdx < jwatCdxEntries.size()) {
     		if (wIdx < wacCdxRecords.size()) {
         		wacCdxRecord = wacCdxRecords.get(wIdx);
@@ -497,13 +516,20 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     			} else if (wacCdxRecord == null) {
     				// WAC fucked up again...
     	            ++wIdx;
+    	            ++nulls;
     	            state = S_DISTURBANCE;
-    			} else  {
+    			} else {
 	                throw new WeirdFileException("JWAT CDX entry is null!");
     			}
     			break;
     		case S_DISTURBANCE:
-    			state = S_BALANCE;
+    			if (wacCdxRecord == null) {
+    				// WAC fucked up again...
+    	            ++wIdx;
+    	            ++nulls;
+    			} else {
+        			state = S_BALANCE;
+    			}
     			break;
     		default:
     			throw new WeirdFileException("Luke I AM your father!");
@@ -518,23 +544,50 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     		}
     		*/
     	}
+    	if ((jwatCdxEntries.size() - nulls) > wacCdxRecords.size()) {
+    		logger.warn("JWAT parsed more records than WAC. (" + (jwatCdxEntries.size() - nulls) + " > " + wacCdxRecords.size() + ")");
+    	}
     	if (disturbances > 0) {
-    		logger.warn(disturbances + " disturbances registered while parsing file.");
+    		logger.warn("{} disturbances registered while parsing file.", disturbances);
+    	}
+    	if (nulls > 0) {
+    		logger.warn("{} null records reported by WAC.", nulls);
     	}
         if (disturbances > 10) {
-        	throw new WeirdFileException("5 disturbances registered!");
+        	throw new WeirdFileException(String.format("%d disturbances registered!", 10));
         }
-    	if (wacCdxRecords.size() > jwatCdxEntries.size()) {
-    		wacCdxRecord = wacCdxRecords.get(wacCdxRecords.size() - 1);
-    		if ((wacCdxRecords.size() - 1 != jwatCdxEntries.size()) || (wacCdxRecord != null && !"-".equalsIgnoreCase(wacCdxRecord.offset) && filelength - Long.parseLong(wacCdxRecord.offset) > 100)) {
-        		throw new WeirdFileException("WAC parsed more record than JWAT. (" + wacCdxRecords.size() + " > " + jwatCdxEntries.size() + ")");
-    		}
-    	}
     	if (wacCdxRecords.size() - wIdx > 1) {
-    		throw new WeirdFileException("WAC parsed records after JWAT stopped. (" + wIdx + "/" + wacCdxRecords.size() + " > " + jIdx + "/" + jwatCdxEntries.size() + ")");
+    		throw new WeirdFileException(String.format("WAC parsed records after JWAT stopped. (%d/%d > %d/%d)!", wIdx, wacCdxRecords.size(), jIdx, jwatCdxEntries.size()));
     	}
-    	if (jwatCdxEntries.size() > wacCdxRecords.size()) {
-    		logger.warn("JWAT parsed more records than WAC. (" + jwatCdxEntries.size() + " > " + wacCdxRecords.size() + ")");
+    	// Find last WAC non null record.
+		wacCdxRecord = null;
+		int lIdx = wacCdxRecords.size() - 1;
+		while (lIdx >= 0 && (wacCdxRecord = wacCdxRecords.get(lIdx)) == null) {
+			--lIdx;
+		}
+		// Find last JWAT non null entry.
+		jwatCdxEntry = null;
+		lIdx = jwatCdxEntries.size() - 1;
+		while (lIdx >= 0 && (jwatCdxEntry = jwatCdxEntries.get(lIdx)) == null) {
+			--lIdx;
+		}
+		if (wacCdxRecord == null || jwatCdxEntry == null) {
+			throw new WeirdFileException("Unable to find the last WAC and/or JWAT record/entry!");
+		}
+		if (Long.parseLong(wacCdxRecord.offset) > jwatCdxEntry.offset) {
+			throw new WeirdFileException(String.format("WAC parsed record past where the last JWAT entry was parsed! (%d > %d)", Long.parseLong(wacCdxRecord.offset), jwatCdxEntry.offset));
+		}
+
+        if (wacCdxRecords.size() > jwatCdxEntries.size()) {
+    		wacCdxRecord = wacCdxRecords.get(wacCdxRecords.size() - 1);
+    		if ((wacCdxRecords.size() - nulls - 1 != jwatCdxEntries.size()) || (wacCdxRecord != null && !"-".equalsIgnoreCase(wacCdxRecord.offset) && filelength - Long.parseLong(wacCdxRecord.offset) > 100)) {
+    			// Debug
+    			//saveWacCdx("wac.cdx", wacCdxRecords);
+    			//saveJwatCdx("jwat.cdx", jwatCdxEntries);
+    			if (wacCdxRecords.size() - nulls - jwatCdxEntries.size() > 10) {
+            		throw new WeirdFileException("WAC parsed more record than JWAT. (" + wacCdxRecords.size() + " > " + jwatCdxEntries.size() + ")");
+    			}
+    		}
     	}
     	return false;
     }
@@ -603,5 +656,81 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     	}
     	return mimetype;
     }
+
+    /**
+     * Debug output webarchive-commons CDX data.
+     * @param filename
+     * @param wacCdxRecords
+     */
+	public void saveWacCdx(String filename, List<CDXRecord> wacCdxRecords) {
+		RandomAccessFile raf = null;
+		StringBuilder sb = new StringBuilder();
+		try {
+			raf = new RandomAccessFile(filename, "rw");
+			Iterator<CDXRecord> iter = wacCdxRecords.iterator();
+			CDXRecord record;
+			while (iter.hasNext()) {
+				record = iter.next();
+				sb.setLength(0);
+				if (record == null) {
+					sb.append("null");
+				} else {
+					sb.append(record.offset);
+					sb.append(" ");
+					sb.append(record.mime);
+					sb.append(" ");
+					sb.append(record.origUrl);
+				}
+				sb.append("\n");
+				raf.write(sb.toString().getBytes("UTF-8"));
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			IOUtils.closeQuietly(raf);
+		}
+	}
+
+	/**
+     * Debug output JWAT CDX data.
+	 * @param filename
+	 * @param jwatCdxEntries
+	 */
+	public void saveJwatCdx(String filename, List<CDXEntry> jwatCdxEntries) {
+		RandomAccessFile raf = null;
+		StringBuilder sb = new StringBuilder();
+		try {
+			raf = new RandomAccessFile(filename, "rw");
+			Iterator<CDXEntry> iter = jwatCdxEntries.iterator();
+			CDXEntry entry;
+			while (iter.hasNext()) {
+				entry = iter.next();
+				sb.setLength(0);
+				if (entry == null) {
+					sb.append("null");
+				} else {
+					sb.append(entry.offset);
+					sb.append(" ");
+					sb.append(entry.mimetype);
+					sb.append(" ");
+					sb.append(entry.url);
+				}
+				sb.append("\n");
+				raf.write(sb.toString().getBytes("UTF-8"));
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			IOUtils.closeQuietly(raf);
+		}
+	}
 
 }
