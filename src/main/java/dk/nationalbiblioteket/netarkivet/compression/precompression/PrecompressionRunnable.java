@@ -24,6 +24,10 @@ import org.archive.wayback.resourcestore.indexer.ArcIndexer;
 import org.archive.wayback.resourcestore.indexer.WarcIndexer;
 import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.jwat.arc.ArcDateParser;
+import org.jwat.arc.ArcHeader;
+import org.jwat.arc.ArcReader;
+import org.jwat.arc.ArcRecordBase;
+import org.jwat.archive.ArchiveRecordParserCallback;
 import org.jwat.common.Uri;
 import org.jwat.common.UriProfile;
 import org.jwat.tools.tasks.ResultItemThrowable;
@@ -35,6 +39,9 @@ import org.jwat.tools.tasks.cdx.CDXResult;
 import org.jwat.tools.tasks.compress.CompressFile;
 import org.jwat.tools.tasks.compress.CompressOptions;
 import org.jwat.tools.tasks.compress.CompressResult;
+import org.jwat.warc.WarcHeader;
+import org.jwat.warc.WarcReader;
+import org.jwat.warc.WarcRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,6 +115,21 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         compressOptions.dstPath = tmpdir;
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
+        if ("23312-55-20071125023519-00403-kb-prod-har-002.kb.dk.arc".equalsIgnoreCase(inputFile.getName())) {
+            compressOptions.arpCallback = new ArchiveRecordParserCallback() {
+    			@Override
+    			public void arcParsedRecordHeader(ArcReader reader, long startOffset, ArcHeader header) {
+    				if (startOffset == 81984113 && header.archiveLength == 14493) {
+    					System.out.println(Long.toHexString(startOffset) + " " + startOffset + " " + header.archiveLength + " " + header.archiveLengthStr);
+    					header.archiveLength = 8192L;
+    					header.archiveLengthStr = "8192";
+    				}
+    			}
+    			@Override
+    			public void warcParsedRecordHeader(WarcReader reader, long startOffset, WarcHeader header) {
+    			}
+    		};
+        }
         CompressResult result = this.compressFile(inputFile, compressOptions);
         File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
@@ -186,6 +208,21 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         CDXOptions cdxOptions = new CDXOptions();
         cdxOptions.recordHeaderMaxSize = recordHeaderMaxSize;
         cdxOptions.payloadHeaderMaxSize = payloadHeaderMaxSize;
+        if ("23312-55-20071125023519-00403-kb-prod-har-002.kb.dk.arc".equalsIgnoreCase(uncompressedFile.getName())) {
+            cdxOptions.arpCallback = new ArchiveRecordParserCallback() {
+    			@Override
+    			public void arcParsedRecordHeader(ArcReader reader, long startOffset, ArcHeader header) {
+    				if (startOffset == 81984113 && header.archiveLength == 14493) {
+    					System.out.println(Long.toHexString(startOffset) + " " + startOffset + " " + header.archiveLength + " " + header.archiveLengthStr);
+    					header.archiveLength = 8192L;
+    					header.archiveLengthStr = "8192";
+    				}
+    			}
+    			@Override
+    			public void warcParsedRecordHeader(WarcReader reader, long startOffset, WarcHeader header) {
+    			}
+    		};
+        }
         List<CDXRecord> wacCdxRecords;
         // Uncompressed CDXRecords.
     	CDXFile uncompressedCDXFile = new CDXFile();
@@ -206,6 +243,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         }
         compareCdxRecords(wacCdxRecords, uncompressedResult.getEntries(), false, uncompressedFile.length());
         wacCdxRecords.clear();
+        cdxOptions.arpCallback = null;
         // Compressed CDXRecords.
         CDXFile compressedCDXFile = new CDXFile();
         CDXResult compressedResult = compressedCDXFile.processFile(compressedFile, cdxOptions);
@@ -585,7 +623,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     			//saveWacCdx("wac.cdx", wacCdxRecords);
     			//saveJwatCdx("jwat.cdx", jwatCdxEntries);
     			if (wacCdxRecords.size() - nulls - jwatCdxEntries.size() > 10) {
-            		throw new WeirdFileException("WAC parsed more record than JWAT. (" + wacCdxRecords.size() + " > " + jwatCdxEntries.size() + ")");
+            		throw new WeirdFileException(String.format("WAC parsed more records than JWAT. (%d > %d)", wacCdxRecords.size(), jwatCdxEntries.size()));
     			}
     		}
     	}
@@ -628,7 +666,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     			}
     			oldMimetype = mimetype;
     			mimetype = sb.toString();
-    			logger.info("Mimetype massaged: " + oldMimetype + " -> " + mimetype);
+    			logger.info("Mimetype massaged: {} -> {}", oldMimetype, mimetype);
     		} else if ((idx = mimetype.indexOf("  ")) != -1) {
     			sb = new StringBuilder(mimetype);
 				sb.delete(idx, idx + 1);
@@ -645,12 +683,12 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     			}
     			oldMimetype = mimetype;
     			mimetype = sb.toString();
-    			logger.info("Mimetype massaged: " + oldMimetype + " -> " + mimetype);
+    			logger.info("Mimetype massaged: {} -> {}", oldMimetype, mimetype);
     		} else {
     			oldMimetype = mimetype;
     			mimetype = mimetype.trim();
     			if (!mimetype.equalsIgnoreCase(oldMimetype)) {
-        			logger.info("Mimetype massaged: " + oldMimetype + " -> " + mimetype);
+        			logger.info("Mimetype massaged: {} -> {}", oldMimetype, mimetype);
     			}
     		}
     	}
