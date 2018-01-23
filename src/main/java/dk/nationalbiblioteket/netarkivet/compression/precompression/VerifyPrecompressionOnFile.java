@@ -21,8 +21,10 @@ import dk.netarkivet.common.utils.cdx.CDXRecord;
 import dk.netarkivet.common.utils.cdx.CDXUtils;
 
 public class VerifyPrecompressionOnFile {
-    static final String SEPARATOR_REGEX = "\\s+";
-    public static void main(String[] args) throws DeeplyTroublingException, WeirdFileException, IOException {
+
+	private static final String SEPARATOR_REGEX = "\\s+";
+
+	public static void main(String[] args) throws DeeplyTroublingException, WeirdFileException, IOException {
     	SLF4JBridgeHandler.install();
     	if (args.length != 1) {
             System.err.println("Missing arg: uncompressed (w)arc file");
