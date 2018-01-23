@@ -1,17 +1,5 @@
 package dk.nationalbiblioteket.netarkivet.compression.compression;
 
-import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
-import dk.nationalbiblioteket.netarkivet.compression.Util;
-import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
-
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.LineIterator;
-import org.apache.commons.lang3.StringUtils;
-import org.jwat.tools.tasks.compress.CompressFile;
-import org.jwat.tools.tasks.compress.CompressOptions;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,16 +7,36 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.LineIterator;
+import org.apache.commons.lang3.StringUtils;
+import org.jwat.arc.ArcHeader;
+import org.jwat.arc.ArcReader;
+import org.jwat.archive.ArchiveRecordParserCallback;
+import org.jwat.tools.tasks.compress.CompressFile;
+import org.jwat.tools.tasks.compress.CompressOptions;
+import org.jwat.tools.tasks.compress.CompressResult;
+import org.jwat.warc.WarcHeader;
+import org.jwat.warc.WarcReader;
+
+import dk.nationalbiblioteket.netarkivet.compression.DeeplyTroublingException;
+import dk.nationalbiblioteket.netarkivet.compression.Util;
+import dk.nationalbiblioteket.netarkivet.compression.WeirdFileException;
+
 /**
  * Created by csr on 1/11/17.
  */
 public class CompressorRunnable extends CompressFile implements Runnable {
+
+    private final int defaultRecordHeaderMaxSize = 1024 * 1024;
+    private final int defaultPayloadHeaderMaxSize = 1024 * 1024;
 
     private boolean isDead = false;
     private final BlockingQueue<String> sharedQueue;
@@ -79,8 +87,7 @@ public class CompressorRunnable extends CompressFile implements Runnable {
                  Runtime.getRuntime().exec("cmd \\c rename \"" + gzipFile.getAbsolutePath() + "\" " + newFile.getName());
              }
         }
-        
-        
+
         boolean dryrun = Boolean.parseBoolean(Util.getProperties().getProperty(Util.DRYRUN));
         if (!dryrun) {
             boolean isWritable = inputFile.setWritable(true);
@@ -145,16 +152,45 @@ public class CompressorRunnable extends CompressFile implements Runnable {
         this.threadNo = threadNo;
     }
 
+    private int getIntProperty(String propertyKey, int defaultPropertyValue) {
+        String propertyValue = Util.getProperties().getProperty(propertyKey);
+        if (propertyValue == null) {
+            return defaultPropertyValue;
+        } else {
+            int propertyValueInt = Integer.decode(propertyValue);
+            return propertyValueInt;
+        }
+    }
+
     private File doCompression(File inputFile) throws WeirdFileException {
+    	final int recordHeaderMaxSize = getIntProperty(Util.RECORD_HEADER_MAXSIZE, defaultRecordHeaderMaxSize);
+        final int payloadHeaderMaxSize = getIntProperty(Util.PAYLOAD_HEADER_MAXSIZE, defaultPayloadHeaderMaxSize);
         File gzipFile = getOutputGzipFile(inputFile);
         gzipFile.getParentFile().mkdirs();
         CompressOptions compressOptions = new CompressOptions();
         compressOptions.dstPath = gzipFile.getParentFile();
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
-        this.compressFile(inputFile, compressOptions);
+        compressOptions.recordHeaderMaxSize = recordHeaderMaxSize;
+        compressOptions.payloadHeaderMaxSize = payloadHeaderMaxSize;
+        if ("23312-55-20071125023519-00403-kb-prod-har-002.kb.dk.arc".equalsIgnoreCase(inputFile.getName())) {
+            compressOptions.arpCallback = new ArchiveRecordParserCallback() {
+    			@Override
+    			public void arcParsedRecordHeader(ArcReader reader, long startOffset, ArcHeader header) {
+    				if (startOffset == 81984113 && header.archiveLength == 14493) {
+    					System.out.println(Long.toHexString(startOffset) + " " + startOffset + " " + header.archiveLength + " " + header.archiveLengthStr);
+    					header.archiveLength = 8192L;
+    					header.archiveLengthStr = "8192";
+    				}
+    			}
+    			@Override
+    			public void warcParsedRecordHeader(WarcReader reader, long startOffset, WarcHeader header) {
+    			}
+    		};
+        }
+        CompressResult result = this.compressFile(inputFile, compressOptions);
         if (!gzipFile.exists()) {
-            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " was not created!");
+            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " was not created.", result.getThrowable());
         } else {
             return gzipFile;
         }

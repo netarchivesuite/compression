@@ -26,7 +26,6 @@ import org.archive.wayback.util.url.AggressiveUrlCanonicalizer;
 import org.jwat.arc.ArcDateParser;
 import org.jwat.arc.ArcHeader;
 import org.jwat.arc.ArcReader;
-import org.jwat.arc.ArcRecordBase;
 import org.jwat.archive.ArchiveRecordParserCallback;
 import org.jwat.common.Uri;
 import org.jwat.common.UriProfile;
@@ -41,7 +40,6 @@ import org.jwat.tools.tasks.compress.CompressOptions;
 import org.jwat.tools.tasks.compress.CompressResult;
 import org.jwat.warc.WarcHeader;
 import org.jwat.warc.WarcReader;
-import org.jwat.warc.WarcRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +54,6 @@ import dk.nationalbiblioteket.netarkivet.compression.precompression.CDXRecordExt
 public class PrecompressionRunnable extends CompressFile implements Runnable {
 
     Logger logger = LoggerFactory.getLogger(PrecompressionRunnable.class);
-
 
     private static boolean isDead = false;
     private static Throwable error = null;
@@ -109,12 +106,16 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
     }
 
     private File doCompression(File inputFile) throws WeirdFileException {
+    	final int recordHeaderMaxSize = getIntProperty(Util.RECORD_HEADER_MAXSIZE, defaultRecordHeaderMaxSize);
+        final int payloadHeaderMaxSize = getIntProperty(Util.PAYLOAD_HEADER_MAXSIZE, defaultPayloadHeaderMaxSize);
         File tmpdir = (new File(Util.getProperties().getProperty(Util.TEMP_DIR)));
         tmpdir.mkdirs();
         CompressOptions compressOptions = new CompressOptions();
         compressOptions.dstPath = tmpdir;
         compressOptions.bTwopass = true;
         compressOptions.compressionLevel = Integer.parseInt(Util.COMPRESSION_LEVEL);
+        compressOptions.recordHeaderMaxSize = recordHeaderMaxSize;
+        compressOptions.payloadHeaderMaxSize = payloadHeaderMaxSize;
         if ("23312-55-20071125023519-00403-kb-prod-har-002.kb.dk.arc".equalsIgnoreCase(inputFile.getName())) {
             compressOptions.arpCallback = new ArchiveRecordParserCallback() {
     			@Override
@@ -133,7 +134,7 @@ public class PrecompressionRunnable extends CompressFile implements Runnable {
         CompressResult result = this.compressFile(inputFile, compressOptions);
         File gzipFile = new File (tmpdir, inputFile.getName() + ".gz");
         if (!gzipFile.exists()) {
-            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " not created.", result.getThrowable());
+            throw new WeirdFileException("Compressed file " + gzipFile.getAbsolutePath() + " was not created.", result.getThrowable());
         } else {
             return gzipFile;
         }
